@@ -1,0 +1,61 @@
+spring:
+  application:
+    name: semeando-digital
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/semeando}
+    username: ${DB_USER:semeando}
+    password: ${DB_PASSWORD:semeando}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate.jdbc.time_zone: UTC
+  flyway:
+    locations: classpath:db/migration,classpath:db/vendor/{vendor}
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 12MB
+
+server:
+  port: ${PORT:8080}
+  error:
+    include-message: never
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+semeando:
+  instituicao:
+    # RN-09: precisa ser idêntico à identidade legal – divergências impedem a aplicação de subir.
+    nome: "Centro Educacional Semeando / Instituto Educacional Semeando"
+    cnpj: "31.486.754/0001-27"
+  valores:
+    mensalidade-fundamental: 375.00
+    parcelas-fundamental: 11
+    # Valores não definidos no levantamento – ajuste conforme a tabela oficial da escola.
+    taxa-associado-infantil: 280.00
+    parcelas-associado: 11
+    taxa-matricula: 150.00
+    dia-vencimento: 10
+  seguranca:
+    jwt-segredo: ${JWT_SECRET:dev-only-segredo-jwt-com-pelo-menos-32-bytes!!}
+    jwt-validade-minutos: 480
+    # Chave AES-256 (Base64, 32 bytes) para dados sensíveis em repouso (RNF-01).
+    chave-dados: ${DATA_KEY:ZGV2LW9ubHktY2hhdmUtYWVzLTI1Ni0zMi1ieXRlcyE=}
+    cors-origens: ${CORS_ORIGINS:http://localhost:3000}
+  cora:
+    # "fake" simula a API do Cora localmente; "http" usa a API real.
+    modo: ${CORA_MODE:fake}
+    url: ${CORA_URL:https://matls-clients.api.stage.cora.com.br}
+    token: ${CORA_TOKEN:}
+    webhook-segredo: ${CORA_WEBHOOK_SECRET:dev-webhook-secret}
+  arquivos:
+    diretorio: ${FILES_DIR:./data/arquivos}
+  seed:
+    # RN-08: somente dados sintéticos são carregados em desenvolvimento.
+    habilitado: ${SEED_ENABLED:true}

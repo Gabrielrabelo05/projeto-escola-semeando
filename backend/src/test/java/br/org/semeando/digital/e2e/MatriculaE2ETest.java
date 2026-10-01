@@ -1,0 +1,192 @@
+package br.org.semeando.digital.e2e;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.hasItem;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import com.jayway.jsonpath.JsonPath;
+import java.time.YearMonth;
+import java.util.List;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.http.MediaType;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
+
+/**
+ * Teste ponta a ponta da API: percorre o fluxo de matrícula da seção 9 do levantamento
+ * (pré-matrícula → aprovação → assinatura → pagamento via webhook → ATIVO → cobrança mensal),
+ * verificando RBAC e regras de negócio pelo contrato HTTP.
+ */
+@SpringBootTest
+@AutoConfigureMockMvc
+@ActiveProfiles("test")
+class MatriculaE2ETest {
+
+    private static final String SENHA = "Semeando@2026";
+    private static final String CPF_RESPONSAVEL = "39053344705";
+
+    @Autowired
+    MockMvc mvc;
+
+    @Test
+    void fluxoCompletoDeMatriculaDoEnsinoFundamental() throws Exception {
+        String admin = login("admin@semeando.dev");
+        String secretaria = login("secretaria@semeando.dev");
+        String financeiro = login("financeiro@semeando.dev");
+        String turmaId = turmaDaSerie("SEGUNDO_ANO");
+
+        // RF-01: pré-matrícula pública
+        String matricula = mvc.perform(post("/api/pre-matriculas").contentType(MediaType.APPLICATION_JSON)
+                        .content(preMatricula("Bruno E2E Sintético", CPF_RESPONSAVEL, turmaId, true)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.status").value("AGUARDANDO_ANALISE"))
+                .andExpect(jsonPath("$.documentos.length()").value(7))
+                .andReturn().getResponse().getContentAsString();
+        String matriculaId = JsonPath.read(matricula, "$.id");
+        String alunoId = JsonPath.read(matricula, "$.alunoId");
+
+        criarUsuarioResponsavel(admin);
+        String responsavel = login("bruno.pai@exemplo.dev");
+
+        // RF-35: responsável não aprova matrícula
+        mvc.perform(autenticado(post("/api/matriculas/" + matriculaId + "/aprovar"), responsavel))
+                .andExpect(status().isForbidden());
+
+        // RF-02 + RN-01: aprovação gera contrato de prestação de serviços com valores oficiais
+        String contrato = mvc.perform(autenticado(post("/api/matriculas/" + matriculaId + "/aprovar"), secretaria))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.tipo").value("CONTRATO_PRESTACAO_SERVICOS"))
+                .andExpect(jsonPath("$.valorParcela").value(375.0))
+                .andExpect(jsonPath("$.valorTotal").value(4125.0))
+                .andReturn().getResponse().getContentAsString();
+        String contratoId = JsonPath.read(contrato, "$.id");
+
+        // RN-02: valores divergentes bloqueiam a geração
+        mvc.perform(autenticado(post("/api/contratos"), secretaria).contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"matriculaId":"%s","valorParcela":350.00,"numeroParcelas":11}
+                                """.formatted(matriculaId)))
+                .andExpect(status().isUnprocessableContent())
+                .andExpect(jsonPath("$.codigo").value("RN-02"));
+
+        // Outro responsável não acessa o contrato
+        mvc.perform(autenticado(get("/api/contratos/" + contratoId), login("responsavel@semeando.dev")))
+                .andExpect(status().isForbidden());
+
+        // RF-15: assinatura eletrônica pelo responsável
+        mvc.perform(autenticado(post("/api/contratos/" + contratoId + "/assinar"), responsavel)
+                        .header("X-Forwarded-For", "200.10.20.30"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("ASSINADO"))
+                .andExpect(jsonPath("$.assinatura.enderecoIp").value("200.10.20.30"));
+
+        // RF-28: webhook do Cora confirma o pagamento da taxa de matrícula
+        String boletos = mvc.perform(autenticado(get("/api/cobrancas/aluno/" + alunoId), financeiro))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].tipo").value("TAXA_MATRICULA"))
+                .andReturn().getResponse().getContentAsString();
+        String idCora = JsonPath.read(boletos, "$[0].idBoletoCora");
+        String evento = """
+                {"id":"%s","status":"PAID","paid_at":null,"total_paid":150.00}""".formatted(idCora);
+
+        mvc.perform(post("/api/webhooks/cora").contentType(MediaType.APPLICATION_JSON).content(evento))
+                .andExpect(status().isUnauthorized());
+        mvc.perform(post("/api/webhooks/cora").header("X-Webhook-Secret", "dev-webhook-secret")
+                        .contentType(MediaType.APPLICATION_JSON).content(evento))
+                .andExpect(status().isNoContent());
+
+        // Passo 13: matrícula ATIVA
+        mvc.perform(autenticado(get("/api/matriculas/" + matriculaId), secretaria))
+                .andExpect(jsonPath("$.status").value("ATIVA"))
+                .andExpect(jsonPath("$.aluno.status").value("ATIVO"));
+
+        // RF-24 + RN-07: mensalidade gerada para o aluno ativo com contrato assinado
+        String mes = YearMonth.now().plusMonths(1).toString();
+        mvc.perform(autenticado(post("/api/cobrancas/gerar-mensal"), financeiro)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"mes\":\"" + mes + "\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.geradas", hasItem("Bruno E2E Sintético")));
+
+        // Portal do responsável
+        mvc.perform(autenticado(get("/api/portal/filhos"), responsavel))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].aluno.nome").value("Bruno E2E Sintético"))
+                .andExpect(jsonPath("$[0].statusMatricula").value("ATIVA"));
+
+        // RF-36: as ações ficam registradas na auditoria
+        String auditoria = mvc.perform(autenticado(get("/api/auditoria").param("entidade", "Contrato"), admin))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        List<String> acoes = JsonPath.read(auditoria, "$[*].acao");
+        assertThat(acoes).contains("ASSINATURA");
+    }
+
+    @Test
+    void rn06PreMatriculaSemAutorizadosEhRecusada() throws Exception {
+        mvc.perform(post("/api/pre-matriculas").contentType(MediaType.APPLICATION_JSON)
+                        .content(preMatricula("Sem Autorizados", "11144477735", turmaDaSerie("QUARTO_ANO"), false)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.campos['aluno.autorizados']").exists());
+    }
+
+    @Test
+    void autenticacaoERbac() throws Exception {
+        mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"admin@semeando.dev\",\"senha\":\"errada\"}"))
+                .andExpect(status().isUnauthorized());
+        mvc.perform(get("/api/alunos")).andExpect(status().isUnauthorized());
+        mvc.perform(autenticado(get("/api/cobrancas/inadimplencia"), login("professora@semeando.dev")))
+                .andExpect(status().isForbidden());
+        mvc.perform(autenticado(get("/api/pedagogico/calendario").param("ano", "2026"),
+                        login("responsavel@semeando.dev")))
+                .andExpect(status().isOk());
+    }
+
+    private String login(String email) throws Exception {
+        String resposta = mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"%s\",\"senha\":\"%s\"}".formatted(email, SENHA)))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        return JsonPath.read(resposta, "$.token");
+    }
+
+    private String turmaDaSerie(String serie) throws Exception {
+        String turmas = mvc.perform(get("/api/publico/turmas")).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        List<String> ids = JsonPath.read(turmas, "$[?(@.serie == '" + serie + "')].id");
+        return ids.getFirst();
+    }
+
+    private void criarUsuarioResponsavel(String admin) throws Exception {
+        mvc.perform(autenticado(post("/api/usuarios"), admin).contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"nome":"Pai E2E","email":"bruno.pai@exemplo.dev","senha":"%s",
+                                 "perfil":"RESPONSAVEL","cpf":"%s"}""".formatted(SENHA, CPF_RESPONSAVEL)))
+                .andExpect(status().isCreated());
+    }
+
+    private static MockHttpServletRequestBuilder autenticado(MockHttpServletRequestBuilder req, String token) {
+        return req.header("Authorization", "Bearer " + token);
+    }
+
+    private static String preMatricula(String aluno, String cpf, String turmaId, boolean comAutorizados) {
+        String autorizados = comAutorizados
+                ? "[{\"nome\":\"Tia Sintética\",\"documento\":\"RG 999\",\"parentesco\":\"Tia\",\"telefone\":null}]"
+                : "[]";
+        return """
+                {
+                  "aluno": {"nome":"%s","dataNascimento":"2019-02-10","alergias":"Lactose","tipoSanguineo":"A+",
+                            "necessidadesEspeciais":null,"hospitalEmergencia":"Hospital Sintético",
+                            "autorizados":%s},
+                  "responsavel": {"nome":"Pai E2E","cpf":"%s","email":"bruno.pai@exemplo.dev",
+                                  "telefone":"98911112222","parentesco":"Pai"},
+                  "turmaId":"%s"
+                }""".formatted(aluno, autorizados, cpf, turmaId);
+    }
+}

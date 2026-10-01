@@ -1,0 +1,12 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:semeando;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH;DB_CLOSE_DELAY=-1
+    username: sa
+    password: ""
+semeando:
+  agendamentos:
+    habilitado: false
+  arquivos:
+    diretorio: ${java.io.tmpdir}/semeando-testes
+  seed:
+    habilitado: true

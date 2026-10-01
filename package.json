@@ -1,0 +1,20 @@
+{
+  "name": "semeando-digital",
+  "private": true,
+  "description": "Monorepo do Semeando Digital – hooks de commit e scripts de conveniência",
+  "scripts": {
+    "prepare": "husky",
+    "db:up": "docker compose up -d db",
+    "db:down": "docker compose down",
+    "backend": "cd backend && ./mvnw spring-boot:run",
+    "frontend": "pnpm --dir frontend dev",
+    "verify:frontend": "pnpm --dir frontend lint && pnpm --dir frontend typecheck && pnpm --dir frontend test",
+    "verify:backend": "cd backend && ./mvnw -q -B test"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^20.0.0",
+    "@commitlint/config-conventional": "^20.0.0",
+    "husky": "^9.1.7"
+  },
+  "packageManager": "pnpm@11.22.0"
+}

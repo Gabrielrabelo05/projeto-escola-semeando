@@ -1,0 +1,60 @@
+# Banco de dados (padrão):           docker compose up -d db
+# Stack completa (db + api + web):   docker compose --profile app up -d --build
+name: semeando-digital
+
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: semeando-db
+    environment:
+      POSTGRES_DB: semeando
+      POSTGRES_USER: semeando
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-semeando}
+      TZ: America/Fortaleza
+    ports:
+      - "5432:5432"
+    volumes:
+      - semeando-dados:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U semeando -d semeando"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  backend:
+    profiles: ["app"]
+    build: ./backend
+    container_name: semeando-api
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:postgresql://db:5432/semeando
+      DB_USER: semeando
+      DB_PASSWORD: ${DB_PASSWORD:-semeando}
+      JWT_SECRET: ${JWT_SECRET:-troque-este-segredo-jwt-de-32-bytes-ou-mais}
+      DATA_KEY: ${DATA_KEY:-ZGV2LW9ubHktY2hhdmUtYWVzLTI1Ni0zMi1ieXRlcyE=}
+      CORS_ORIGINS: http://localhost:3000
+      CORA_MODE: ${CORA_MODE:-fake}
+      SEED_ENABLED: ${SEED_ENABLED:-true}
+      FILES_DIR: /app/arquivos
+    ports:
+      - "8080:8080"
+    volumes:
+      - semeando-arquivos:/app/arquivos
+
+  frontend:
+    profiles: ["app"]
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:8080/api
+    container_name: semeando-web
+    depends_on:
+      - backend
+    ports:
+      - "3000:3000"
+
+volumes:
+  semeando-dados:
+  semeando-arquivos:

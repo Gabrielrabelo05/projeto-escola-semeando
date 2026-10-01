@@ -1,0 +1,3 @@
+# Bloqueia o push se lint, typecheck ou testes estiverem quebrados.
+pnpm run verify:frontend
+pnpm run verify:backend

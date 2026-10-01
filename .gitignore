@@ -1,0 +1,11 @@
+node_modules/
+.idea/
+.vscode/
+*.log
+.env
+backend/target/
+backend/data/
+
+# variáveis de ambiente ficam apenas locais
+.env*
+**/.env*
