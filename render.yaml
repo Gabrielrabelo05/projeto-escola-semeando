@@ -1,0 +1,36 @@
+# Blueprint do Render para a API (passo a passo em DEPLOY.md).
+# Valores com "sync: false" são pedidos no painel durante a criação e nunca ficam no repositório.
+services:
+  - type: web
+    name: semeando-api
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free
+    region: virginia
+    healthCheckPath: /actuator/health
+    autoDeploy: true
+    buildFilter:
+      paths:
+        - backend/**
+    envVars:
+      - key: DB_URL
+        sync: false
+      - key: DB_USER
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: DB_POOL_SIZE
+        value: "5"
+      - key: JWT_SECRET
+        generateValue: true
+      - key: DATA_KEY
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+      - key: CORA_MODE
+        value: fake
+      - key: CORA_WEBHOOK_SECRET
+        generateValue: true
+      - key: SEED_ENABLED
+        value: "true"

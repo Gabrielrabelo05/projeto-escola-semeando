@@ -31,6 +31,8 @@ Stack completa em containers: `docker compose --profile app up -d --build`.
 
 > Sem Docker? `cd backend && ./mvnw spring-boot:test-run` sobe a API com H2 em memória.
 
+Publicar na internet (Supabase + Render + Vercel): veja [DEPLOY.md](DEPLOY.md).
+
 ### Usuários sintéticos (RN-08)
 
 Na primeira execução o sistema carrega **apenas dados sintéticos**, percorrendo os próprios casos de uso

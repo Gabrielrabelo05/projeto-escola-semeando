@@ -10,6 +10,7 @@ FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 RUN addgroup -S app && adduser -S app -G app && mkdir -p /app/arquivos && chown app:app /app/arquivos
 USER app
+ENV FILES_DIR=/app/arquivos
 COPY --from=build /src/target/semeando-digital-*.jar app.jar
 EXPOSE 8080
 ENTRYPOINT ["java", "-XX:MaxRAMPercentage=75", "-jar", "app.jar"]
