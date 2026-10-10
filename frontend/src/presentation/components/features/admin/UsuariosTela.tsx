@@ -123,7 +123,17 @@ export function UsuariosTela() {
                   u.ativo && u.acessoPendente ? (
                     <Badge variant="outline">Aguardando senha</Badge>
                   ) : (
-                    <StatusBadge status={u.ativo ? "ATIVO" : "INATIVO"} />
+                    <span className="flex items-center gap-1">
+                      <StatusBadge status={u.ativo ? "ATIVO" : "INATIVO"} />
+                      {u.ativo && u.doisFatoresAtivo && (
+                        <Badge
+                          variant="outline"
+                          title="Verificação em duas etapas ativa"
+                        >
+                          2FA
+                        </Badge>
+                      )}
+                    </span>
                   ),
               },
               {

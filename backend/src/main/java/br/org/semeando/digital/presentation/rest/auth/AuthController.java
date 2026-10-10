@@ -1,6 +1,7 @@
 package br.org.semeando.digital.presentation.rest.auth;
 
 import br.org.semeando.digital.application.auth.AutenticacaoUseCase;
+import br.org.semeando.digital.application.auth.AutenticacaoUseCase.Etapa;
 import br.org.semeando.digital.application.auth.ConvitesAcessoUseCase;
 import br.org.semeando.digital.application.auth.EmissorConvite.Convite;
 import br.org.semeando.digital.application.shared.Ator;
@@ -44,13 +45,22 @@ public class AuthController {
         this.cookie = cookie;
     }
 
-    /** O token vai apenas no cookie HttpOnly; o corpo traz só os dados do usuário. */
+    /**
+     * O token vai apenas no cookie HttpOnly; o corpo traz só os dados do usuário. Com verificação em duas etapas, a
+     * resposta indica a próxima etapa e o cookie é o do desafio, que não abre sessão.
+     */
     @PostMapping("/auth/login")
-    public ResponseEntity<SessaoResponse> login(@Valid @RequestBody LoginRequest request, HttpServletRequest http) {
-        var sessao = autenticacao.entrar(request.email(), request.senha(), Origem.ip(http));
+    public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request, HttpServletRequest http) {
+        var resultado = autenticacao.entrar(request.email(), request.senha(), Origem.ip(http));
+        if (resultado.etapa() != Etapa.AUTENTICADO) {
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.SET_COOKIE, cookie.criarDesafio(resultado.tokenDesafio()).toString())
+                    .body(new LoginResponse(resultado.etapa(), null));
+        }
+        var sessao = resultado.sessao();
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, cookie.criar(sessao.token()).toString())
-                .body(new SessaoResponse(UsuarioResponse.de(sessao.usuario())));
+                .body(new LoginResponse(Etapa.AUTENTICADO, UsuarioResponse.de(sessao.usuario())));
     }
 
     /** Usuário logado (o front consulta ao abrir, já que não tem acesso ao token). */
@@ -116,15 +126,20 @@ public class AuthController {
     public record DefinirSenhaRequest(@NotBlank String senha) {
     }
 
-    public record SessaoResponse(UsuarioResponse usuario) {
+    /** {@code usuario} só quando a etapa é AUTENTICADO. */
+    public record LoginResponse(Etapa etapa, UsuarioResponse usuario) {
     }
 
-    /** {@code acessoPendente}: o usuário ainda não definiu a senha pelo link. */
+    /**
+     * {@code acessoPendente}: o usuário ainda não definiu a senha pelo link. {@code doisFatoresAtivo}: entra com o
+     * código do aplicativo autenticador.
+     */
     public record UsuarioResponse(UUID id, String nome, String email, Perfil perfil, boolean ativo,
-            boolean acessoPendente) {
+            boolean acessoPendente, boolean doisFatoresAtivo) {
 
         public static UsuarioResponse de(Usuario u) {
-            return new UsuarioResponse(u.id(), u.nome(), u.email(), u.perfil(), u.ativo(), !u.possuiSenha());
+            return new UsuarioResponse(u.id(), u.nome(), u.email(), u.perfil(), u.ativo(), !u.possuiSenha(),
+                    u.doisFatoresAtivo());
         }
     }
 

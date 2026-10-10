@@ -148,10 +148,17 @@ o lê), o front repassa `/api` ao backend no próprio domínio, alterações exi
 troca de senha derrubam as sessões na hora, o login bloqueia força bruta (5 erros → 15 min) e o front envia
 CSP, HSTS e demais cabeçalhos de proteção.
 
+Verificação em duas etapas (RNF-01): obrigatória para o Administrador (`DOIS_FATORES_PERFIS`, padrão `ADMIN`) e
+opcional para os demais perfis, em "Minha conta". Usa TOTP (RFC 6238, Google/Microsoft Authenticator, Authy):
+no 1º acesso o administrador lê um QR Code e recebe 10 códigos de recuperação de uso único. O segredo fica
+cifrado (AES-256-GCM), um código não pode ser reusado, 5 códigos errados bloqueiam por 15 minutos e a etapa do
+código usa um cookie de desafio que não abre sessão. Quem perder o celular e os códigos recebe da administração
+um novo link de acesso, que redefine a senha e zera o 2FA.
+
 Requisitos não funcionais atendidos: RBAC por perfil (RF-35), log de auditoria somente inserção, com
 trigger no PostgreSQL que bloqueia UPDATE/DELETE (RNF-06), criptografia AES-256-GCM das informações de
 saúde em repouso (RNF-01), registros nunca excluídos (RF-37), interface responsiva (RNF-04),
-cobertura de testes do backend de 71,5% (RNF-05, relatório em `backend/target/site/jacoco`).
+cobertura de testes do backend de 74,9% (RNF-05, relatório em `backend/target/site/jacoco`).
 
 ---
 
@@ -191,7 +198,6 @@ Premissas adotadas onde esses documentos não definem:
 
 Ainda não implementado:
 
-* **2FA para administradores (RNF-01)**.
 * Envio real de e-mail/WhatsApp: o `LogNotificacaoGateway` apenas registra a mensagem; falta um
   adaptador SMTP / WhatsApp Business.
 * Integração Cora em produção: o `CoraHttpGateway` existe, mas falta o certificado mTLS e a validação do

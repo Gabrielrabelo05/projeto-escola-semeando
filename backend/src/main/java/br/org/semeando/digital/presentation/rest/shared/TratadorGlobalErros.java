@@ -36,7 +36,7 @@ public class TratadorGlobalErros {
     @ExceptionHandler(DomainException.class)
     ResponseEntity<ErroResponse> dominio(DomainException e) {
         HttpStatus status = switch (e.codigo()) {
-            case "CREDENCIAIS_INVALIDAS" -> HttpStatus.UNAUTHORIZED;
+            case "CREDENCIAIS_INVALIDAS", "DESAFIO_EXPIRADO" -> HttpStatus.UNAUTHORIZED;
             case "MUITAS_TENTATIVAS" -> HttpStatus.TOO_MANY_REQUESTS;
             default -> HttpStatus.UNPROCESSABLE_CONTENT;
         };

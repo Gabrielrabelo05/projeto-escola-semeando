@@ -12,9 +12,19 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ replace, push: vi.fn() }),
 }));
 
-function renderizar(entrar: Gateways["auth"]["entrar"]) {
+function renderizar(
+  entrar: Gateways["auth"]["entrar"],
+  confirmarCodigo: Gateways["auth"]["confirmarCodigo"] = vi.fn(),
+) {
   const auth = {
     entrar,
+    confirmarCodigo,
+    prepararDoisFatoresNoLogin: vi.fn(),
+    ativarDoisFatoresNoLogin: vi.fn(),
+    situacaoDoisFatores: vi.fn(),
+    prepararDoisFatores: vi.fn(),
+    ativarDoisFatores: vi.fn(),
+    desativarDoisFatores: vi.fn(),
     sessaoAtual: vi.fn().mockRejectedValue(new ErroApi(401, "HTTP_401", "")),
     sair: vi.fn().mockResolvedValue(undefined),
     listarUsuarios: vi.fn(),
@@ -49,6 +59,7 @@ describe("LoginTela", () => {
 
   it("autentica pelo gateway e redireciona conforme o perfil", async () => {
     const entrar = vi.fn().mockResolvedValue({
+      etapa: "AUTENTICADO",
       usuario: {
         id: "1",
         nome: "Maria",
@@ -87,5 +98,32 @@ describe("LoginTela", () => {
     expect(
       await screen.findByText("E-mail ou senha inválidos"),
     ).toBeInTheDocument();
+  });
+
+  it("pede o código do aplicativo quando a conta tem verificação em duas etapas", async () => {
+    const entrar = vi.fn().mockResolvedValue({ etapa: "CODIGO" });
+    const confirmarCodigo = vi.fn().mockResolvedValue({
+      usuario: {
+        id: "1",
+        nome: "Renata",
+        email: "admin@x.dev",
+        perfil: "ADMIN",
+        ativo: true,
+      },
+    });
+    renderizar(entrar, confirmarCodigo);
+    await userEvent.type(screen.getByLabelText("E-mail"), "admin@x.dev");
+    await userEvent.type(screen.getByLabelText("Senha"), "segredo123");
+    await userEvent.click(screen.getByRole("button", { name: "Entrar" }));
+
+    expect(replace).not.toHaveBeenCalled();
+    await userEvent.type(
+      await screen.findByLabelText("Código de verificação"),
+      "123456",
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Verificar" }));
+
+    await waitFor(() => expect(replace).toHaveBeenCalledWith("/painel"));
+    expect(confirmarCodigo).toHaveBeenCalledWith("123456");
   });
 });

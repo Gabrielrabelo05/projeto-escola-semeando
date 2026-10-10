@@ -1,5 +1,6 @@
 package br.org.semeando.digital.infrastructure.security;
 
+import br.org.semeando.digital.domain.usuario.PoliticaDoisFatores;
 import br.org.semeando.digital.domain.usuario.UsuarioRepository;
 import br.org.semeando.digital.infrastructure.config.SemeandoProperties;
 import com.nimbusds.jose.jwk.source.ImmutableSecret;
@@ -41,7 +42,8 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 @EnableMethodSecurity
 public class SegurancaConfig {
 
-    private static final String[] ROTAS_PUBLICAS = {"/api/auth/login", "/api/auth/sair", "/api/pre-matriculas",
+    private static final String[] ROTAS_PUBLICAS = {"/api/auth/login", "/api/auth/sair", "/api/auth/desafio/**",
+        "/api/pre-matriculas",
         "/api/publico/**", "/api/webhooks/cora", "/actuator/health"};
 
     @Bean
@@ -55,7 +57,8 @@ public class SegurancaConfig {
                         .contentSecurityPolicy(csp -> csp.policyDirectives("default-src 'none'; frame-ancestors 'none'"))
                         .referrerPolicy(r -> r.policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.NO_REFERRER)))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(HttpMethod.POST, "/api/auth/login", "/api/auth/sair").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/auth/login", "/api/auth/sair", "/api/auth/desafio/*")
+                        .permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/pre-matriculas").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/publico/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/publico/convites/*/senha").permitAll()
@@ -90,11 +93,11 @@ public class SegurancaConfig {
     }
 
     @Bean
-    JwtDecoder jwtDecoder(SemeandoProperties props, UsuarioRepository usuarios) {
+    JwtDecoder jwtDecoder(SemeandoProperties props, UsuarioRepository usuarios, PoliticaDoisFatores politica) {
         NimbusJwtDecoder decoder = NimbusJwtDecoder.withSecretKey(chave(props)).macAlgorithm(MacAlgorithm.HS256)
                 .build();
         decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
-                JwtValidators.createDefaultWithIssuer(JwtEmissorToken.EMISSOR), new ValidadorSessaoAtiva(usuarios)));
+                JwtValidators.createDefaultWithIssuer(JwtEmissorToken.EMISSOR), new ValidadorSessaoAtiva(usuarios, politica)));
         return decoder;
     }
 
@@ -120,7 +123,7 @@ public class SegurancaConfig {
         return conversor;
     }
 
-    private static SecretKey chave(SemeandoProperties props) {
+    static SecretKey chave(SemeandoProperties props) {
         byte[] bytes = props.seguranca().jwtSegredo().getBytes(StandardCharsets.UTF_8);
         if (bytes.length < 32) {
             throw new IllegalStateException("O segredo JWT deve ter ao menos 32 bytes");

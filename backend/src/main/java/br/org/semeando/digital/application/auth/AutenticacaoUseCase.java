@@ -9,6 +9,7 @@ import br.org.semeando.digital.domain.auditoria.AcaoAuditada;
 import br.org.semeando.digital.domain.shared.Cpf;
 import br.org.semeando.digital.domain.shared.DomainException;
 import br.org.semeando.digital.domain.usuario.Perfil;
+import br.org.semeando.digital.domain.usuario.PoliticaDoisFatores;
 import br.org.semeando.digital.domain.usuario.Usuario;
 import br.org.semeando.digital.domain.usuario.UsuarioRepository;
 import java.time.Clock;
@@ -26,24 +27,29 @@ public class AutenticacaoUseCase {
     private final CodificadorSenha codificador;
     private final EmissorToken emissorToken;
     private final LimitadorTentativasLogin limitador;
+    private final PoliticaDoisFatores politica;
     private final Auditor auditor;
     private final Clock clock;
     /** Hash usado quando o e-mail não existe, para o tempo de resposta não revelar quem tem conta. */
     private final String hashFicticio;
 
     public AutenticacaoUseCase(UsuarioRepository usuarios, CodificadorSenha codificador, EmissorToken emissorToken,
-            LimitadorTentativasLogin limitador, Auditor auditor, Clock clock) {
+            LimitadorTentativasLogin limitador, PoliticaDoisFatores politica, Auditor auditor, Clock clock) {
         this.usuarios = usuarios;
         this.codificador = codificador;
         this.emissorToken = emissorToken;
         this.limitador = limitador;
+        this.politica = politica;
         this.auditor = auditor;
         this.clock = clock;
         this.hashFicticio = codificador.codificar("senha-ficticia-para-tempo-constante");
     }
 
-    /** {@code origem}: IP de quem tenta entrar, usado no bloqueio por força bruta. */
-    public Sessao entrar(String email, String senha, String origem) {
+    /**
+     * {@code origem}: IP de quem tenta entrar, usado no bloqueio por força bruta. Quem tem (ou precisa ter) a
+     * verificação em duas etapas não recebe sessão aqui, só o desafio para a etapa do código (RNF-01).
+     */
+    public ResultadoLogin entrar(String email, String senha, String origem) {
         String normalizado = email == null ? "" : email.trim().toLowerCase();
         limitador.verificar(normalizado, origem);
         Optional<Usuario> encontrado = usuarios.buscarPorEmail(normalizado);
@@ -56,7 +62,12 @@ public class AutenticacaoUseCase {
                     return new DomainException("CREDENCIAIS_INVALIDAS", "E-mail ou senha inválidos");
                 });
         limitador.registrarSucesso(normalizado, origem);
-        return new Sessao(emissorToken.emitir(usuario), usuario);
+        if (!politica.exige(usuario)) {
+            return new ResultadoLogin(Etapa.AUTENTICADO, new Sessao(emissorToken.emitir(usuario, false), usuario),
+                    null);
+        }
+        Etapa etapa = usuario.doisFatoresAtivo() ? Etapa.CODIGO : Etapa.CONFIGURAR_DOIS_FATORES;
+        return new ResultadoLogin(etapa, null, emissorToken.emitirDesafio(usuario));
     }
 
     /** Usuário da sessão atual, lido do banco (nome e perfil sempre atualizados). */
@@ -97,5 +108,16 @@ public class AutenticacaoUseCase {
     }
 
     public record Sessao(String token, Usuario usuario) {
+    }
+
+    /** Próxima etapa do login: entrar direto, digitar o código do aplicativo ou configurá-lo (1º acesso). */
+    public enum Etapa {
+        AUTENTICADO,
+        CODIGO,
+        CONFIGURAR_DOIS_FATORES
+    }
+
+    /** {@code sessao} só no AUTENTICADO; {@code tokenDesafio} nas etapas de verificação. */
+    public record ResultadoLogin(Etapa etapa, Sessao sessao, String tokenDesafio) {
     }
 }

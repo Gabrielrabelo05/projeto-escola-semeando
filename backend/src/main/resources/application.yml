@@ -58,6 +58,8 @@ semeando:
     jwt-validade-minutos: 480
     # Cookie de sessão só por HTTPS (navegadores aceitam também em http://localhost).
     cookie-seguro: ${COOKIE_SECURE:true}
+    # Perfis que só entram com verificação em duas etapas (RNF-01), separados por vírgula.
+    dois-fatores-obrigatorio: ${DOIS_FATORES_PERFIS:ADMIN}
     # Chave AES-256 (Base64, 32 bytes) para dados sensíveis em repouso (RNF-01).
     chave-dados: ${DATA_KEY:ZGV2LW9ubHktY2hhdmUtYWVzLTI1Ni0zMi1ieXRlcyE=}
     cors-origens: ${CORS_ORIGINS:http://localhost:3000}

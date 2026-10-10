@@ -8,11 +8,39 @@ export interface Usuario {
   ativo: boolean;
   /** Ainda não definiu a senha pelo link de acesso. */
   acessoPendente: boolean;
+  /** Entra com o código do aplicativo autenticador. */
+  doisFatoresAtivo: boolean;
 }
 
 /** O token fica só no cookie HttpOnly; o front recebe apenas os dados do usuário. */
 export interface Sessao {
   usuario: Usuario;
+}
+
+/**
+ * Resultado da senha: entra direto, pede o código do aplicativo ou, no 1º acesso de quem é obrigado a usar
+ * verificação em duas etapas (Administrador), pede para configurá-la.
+ */
+export type ResultadoLogin =
+  | { etapa: "AUTENTICADO"; usuario: Usuario }
+  | { etapa: "CODIGO" | "CONFIGURAR_DOIS_FATORES"; usuario?: undefined };
+
+/** QR Code (`uri` otpauth://) e o segredo para digitar no aplicativo. */
+export interface ConfiguracaoDoisFatores {
+  segredo: string;
+  uri: string;
+}
+
+/** Os códigos de recuperação aparecem só nesta resposta. */
+export interface AtivacaoDoisFatores {
+  usuario: Usuario;
+  codigosRecuperacao: string[];
+}
+
+export interface SituacaoDoisFatores {
+  ativo: boolean;
+  obrigatorio: boolean;
+  codigosRecuperacaoRestantes: number;
 }
 
 export interface Credenciais {

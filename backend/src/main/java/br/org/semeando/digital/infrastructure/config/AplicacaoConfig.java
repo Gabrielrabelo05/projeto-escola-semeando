@@ -24,6 +24,7 @@ import br.org.semeando.digital.domain.shared.Dinheiro;
 import br.org.semeando.digital.domain.shared.IdentidadeInstitucional;
 import br.org.semeando.digital.domain.turma.TurmaRepository;
 import br.org.semeando.digital.domain.usuario.ConviteAcessoRepository;
+import br.org.semeando.digital.domain.usuario.PoliticaDoisFatores;
 import br.org.semeando.digital.domain.usuario.UsuarioRepository;
 import br.org.semeando.digital.infrastructure.gateway.cora.CoraFakeGateway;
 import br.org.semeando.digital.infrastructure.gateway.cora.CoraHttpGateway;
@@ -88,6 +89,11 @@ public class AplicacaoConfig {
     @Bean
     LimitadorTentativasLogin limitadorTentativasLogin(Clock clock) {
         return new LimitadorTentativasLogin(clock);
+    }
+
+    @Bean
+    PoliticaDoisFatores politicaDoisFatores(SemeandoProperties props) {
+        return new PoliticaDoisFatores(props.seguranca().doisFatoresObrigatorio());
     }
 
     @Bean

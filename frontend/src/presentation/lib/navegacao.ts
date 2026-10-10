@@ -5,6 +5,7 @@ import {
   GraduationCap,
   HandCoins,
   House,
+  KeyRound,
   type LucideIcon,
   Package,
   ScrollText,
@@ -87,6 +88,18 @@ export const NAVEGACAO: ItemNavegacao[] = [
     titulo: "Auditoria",
     icone: ShieldCheck,
     perfis: GESTAO,
+  },
+  {
+    href: "/conta",
+    titulo: "Minha conta",
+    icone: KeyRound,
+    perfis: [
+      ...SECRETARIA,
+      "FINANCEIRO",
+      "PROFESSOR",
+      "RESPONSAVEL",
+      "PRESTADOR",
+    ],
   },
 ];
 

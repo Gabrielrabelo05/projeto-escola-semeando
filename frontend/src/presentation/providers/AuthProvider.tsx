@@ -10,13 +10,19 @@ import {
   useState,
 } from "react";
 import type { AuthGateway } from "@/domain/gateways";
-import type { Credenciais, Usuario } from "@/domain/models/auth";
+import type {
+  Credenciais,
+  ResultadoLogin,
+  Usuario,
+} from "@/domain/models/auth";
 import type { Perfil } from "@/domain/models/comum";
 
 interface AuthContexto {
   usuario: Usuario | null;
   carregando: boolean;
-  entrar(credenciais: Credenciais): Promise<Usuario>;
+  entrar(credenciais: Credenciais): Promise<ResultadoLogin>;
+  /** Fim da etapa do código (ou da ativação do 2FA): a sessão já está no cookie. */
+  concluirLogin(usuario: Usuario): void;
   sair(): void;
   possuiPerfil(...perfis: Perfil[]): boolean;
 }
@@ -58,12 +64,14 @@ export function AuthProvider({ gateway, children }: Props) {
 
   const entrar = useCallback(
     async (credenciais: Credenciais) => {
-      const sessao = await gateway.entrar(credenciais);
-      setUsuario(sessao.usuario);
-      return sessao.usuario;
+      const resultado = await gateway.entrar(credenciais);
+      if (resultado.etapa === "AUTENTICADO") setUsuario(resultado.usuario);
+      return resultado;
     },
     [gateway],
   );
+
+  const concluirLogin = useCallback((atual: Usuario) => setUsuario(atual), []);
 
   const sair = useCallback(() => {
     setUsuario(null);
@@ -77,8 +85,8 @@ export function AuthProvider({ gateway, children }: Props) {
   );
 
   const valor = useMemo(
-    () => ({ usuario, carregando, entrar, sair, possuiPerfil }),
-    [usuario, carregando, entrar, sair, possuiPerfil],
+    () => ({ usuario, carregando, entrar, concluirLogin, sair, possuiPerfil }),
+    [usuario, carregando, entrar, concluirLogin, sair, possuiPerfil],
   );
   return <Contexto.Provider value={valor}>{children}</Contexto.Provider>;
 }

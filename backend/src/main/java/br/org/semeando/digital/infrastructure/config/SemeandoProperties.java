@@ -1,7 +1,9 @@
 package br.org.semeando.digital.infrastructure.config;
 
+import br.org.semeando.digital.domain.usuario.Perfil;
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Set;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.bind.DefaultValue;
 
@@ -21,9 +23,12 @@ public record SemeandoProperties(Instituicao instituicao, Valores valores, Segur
     public record Parcela(BigDecimal integral, BigDecimal comDesconto) {
     }
 
-    /** {@code cookieSeguro}: cookie de sessão só por HTTPS (desligar apenas em HTTP fora de localhost). */
+    /**
+     * {@code cookieSeguro}: cookie de sessão só por HTTPS (desligar apenas em HTTP fora de localhost).
+     * {@code doisFatoresObrigatorio}: perfis que só entram com verificação em duas etapas (RNF-01).
+     */
     public record Seguranca(String jwtSegredo, long jwtValidadeMinutos, List<String> corsOrigens,
-            @DefaultValue("true") boolean cookieSeguro) {
+            @DefaultValue("true") boolean cookieSeguro, @DefaultValue("ADMIN") Set<Perfil> doisFatoresObrigatorio) {
     }
 
     public record Cora(String modo, String url, String token, String webhookSegredo) {
