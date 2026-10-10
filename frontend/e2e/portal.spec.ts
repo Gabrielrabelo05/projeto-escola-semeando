@@ -7,7 +7,7 @@ test("portal do responsável mostra filhos, boletos e lista de materiais", async
   await entrar(page, "responsavel@semeando.dev");
   await expect(page).toHaveURL(/\/portal$/);
   const lucas = page.locator("[data-slot=card]", {
-    hasText: "Lucas Sintético",
+    hasText: "Lucas Oliveira Santos",
   });
   await expect(lucas).toBeVisible();
   await expect(

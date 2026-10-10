@@ -18,7 +18,7 @@ public class Usuario {
         this.id = Validacoes.obrigatorio(id, "id");
         this.nome = Validacoes.obrigatorio(nome, "nome");
         this.email = Validacoes.obrigatorio(email, "e-mail").toLowerCase();
-        this.senhaHash = Validacoes.obrigatorio(senhaHash, "senha");
+        this.senhaHash = senhaHash;
         this.perfil = Validacoes.obrigatorio(perfil, "perfil");
         this.cpf = cpf;
         this.ativo = ativo;
@@ -26,6 +26,15 @@ public class Usuario {
 
     public static Usuario novo(String nome, String email, String senhaHash, Perfil perfil, Cpf cpf) {
         return new Usuario(UUID.randomUUID(), nome, email, senhaHash, perfil, cpf, true);
+    }
+
+    /** Usuário criado por convite: só entra no sistema depois de definir a própria senha. */
+    public static Usuario convidado(String nome, String email, Perfil perfil, Cpf cpf) {
+        return new Usuario(UUID.randomUUID(), nome, email, null, perfil, cpf, true);
+    }
+
+    public boolean possuiSenha() {
+        return senhaHash != null;
     }
 
     public void alterarPerfil(Perfil perfil) {

@@ -1,15 +1,18 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Plus } from "lucide-react";
+import { KeyRound, Plus } from "lucide-react";
 import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import type { ConviteAcesso } from "@/domain/models/auth";
 import type { Perfil } from "@/domain/models/comum";
 import { FormularioDialog } from "@/presentation/components/features/cadastros/FormularioDialog";
 import { Campo, CampoTexto } from "@/presentation/components/shared/Campo";
 import { Conteudo } from "@/presentation/components/shared/Estados";
+import { LinkAcessoDialog } from "@/presentation/components/shared/LinkAcessoDialog";
 import { PageHeader } from "@/presentation/components/shared/PageHeader";
 import { Selecao } from "@/presentation/components/shared/Selecao";
 import { StatusBadge } from "@/presentation/components/shared/StatusBadge";
@@ -37,7 +40,6 @@ const schema = z
   .object({
     nome: z.string().trim().min(1, "Obrigatório"),
     email: z.email("E-mail inválido"),
-    senha: z.string().min(8, "Mínimo de 8 caracteres"),
     perfil: z.enum(PERFIS as [Perfil, ...Perfil[]]),
     cpf: z.string(),
   })
@@ -51,22 +53,31 @@ const schema = z
   );
 type Form = z.infer<typeof schema>;
 
-/** Administração de usuários e perfis (RF-35). */
+/**
+ * Administração de usuários e perfis (RF-35). O acesso é criado sem senha: o sistema gera um link para a
+ * própria pessoa definir a senha, e o mesmo botão serve para redefinir a senha de quem esqueceu.
+ */
 export function UsuariosTela() {
   const { auth } = useGateways();
   const estado = useCarregar(() => auth.listarUsuarios(), []);
   const [aberto, setAberto] = useState(false);
+  const [convite, setConvite] = useState<ConviteAcesso | null>(null);
   const { register, control, handleSubmit, reset, formState } = useForm<Form>({
     resolver: zodResolver(schema),
   });
   const criar = useAcao(async (dados: Form) => {
-    await auth.criarUsuario({
+    const criado = await auth.criarUsuario({
       ...dados,
       cpf: dados.cpf ? somenteDigitos(dados.cpf) : undefined,
     });
     setAberto(false);
+    setConvite(criado);
     await estado.recarregar();
-  }, "Usuário criado");
+  });
+  const novoLink = useAcao(async (id: string) => {
+    setConvite(await auth.novoLinkAcesso(id));
+    await estado.recarregar();
+  });
   const inativar = useAcao(async (id: string) => {
     await auth.inativarUsuario(id);
     await estado.recarregar();
@@ -84,7 +95,6 @@ export function UsuariosTela() {
               reset({
                 nome: "",
                 email: "",
-                senha: "",
                 perfil: "SECRETARIA",
                 cpf: "",
               });
@@ -109,21 +119,35 @@ export function UsuariosTela() {
               { titulo: "Perfil", celula: (u) => rotulo(u.perfil) },
               {
                 titulo: "Situação",
-                celula: (u) => (
-                  <StatusBadge status={u.ativo ? "ATIVO" : "INATIVO"} />
-                ),
+                celula: (u) =>
+                  u.ativo && u.acessoPendente ? (
+                    <Badge variant="outline">Aguardando senha</Badge>
+                  ) : (
+                    <StatusBadge status={u.ativo ? "ATIVO" : "INATIVO"} />
+                  ),
               },
               {
                 titulo: "",
                 celula: (u) =>
                   u.ativo && (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => inativar.executar(u.id)}
-                    >
-                      Inativar
-                    </Button>
+                    <div className="flex justify-end gap-1">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={novoLink.executando}
+                        onClick={() => novoLink.executar(u.id)}
+                      >
+                        <KeyRound />
+                        {u.acessoPendente ? "Reenviar link" : "Redefinir senha"}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => inativar.executar(u.id)}
+                      >
+                        Inativar
+                      </Button>
+                    </div>
                   ),
               },
             ]}
@@ -150,13 +174,10 @@ export function UsuariosTela() {
           erro={e.email?.message}
           {...register("email")}
         />
-        <CampoTexto
-          id="usr-senha"
-          rotulo="Senha inicial"
-          type="password"
-          erro={e.senha?.message}
-          {...register("senha")}
-        />
+        <p className="text-xs text-muted-foreground">
+          Não é preciso definir senha: ao salvar, o sistema gera um link para a
+          própria pessoa criar a senha dela.
+        </p>
         <Controller
           control={control}
           name="perfil"
@@ -179,6 +200,7 @@ export function UsuariosTela() {
           {...register("cpf")}
         />
       </FormularioDialog>
+      <LinkAcessoDialog convite={convite} aoFechar={() => setConvite(null)} />
     </>
   );
 }

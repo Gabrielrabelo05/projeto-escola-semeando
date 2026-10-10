@@ -42,6 +42,10 @@ public final class CadastroDtos {
         }
     }
 
+    public record ResponsavelRequest(@NotBlank String nome, @NotBlank @Email String email, @NotBlank String telefone,
+            @NotBlank String parentesco) {
+    }
+
     public record AtividadesRequest(@NotNull Set<AtividadeExtracurricular> atividades) {
     }
 

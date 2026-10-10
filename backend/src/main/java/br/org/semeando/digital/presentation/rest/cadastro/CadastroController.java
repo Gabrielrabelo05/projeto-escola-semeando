@@ -9,6 +9,7 @@ import br.org.semeando.digital.application.cadastro.ProfessoresUseCase;
 import br.org.semeando.digital.application.cadastro.TurmasUseCase;
 import br.org.semeando.digital.application.shared.Ator;
 import br.org.semeando.digital.domain.aluno.StatusAluno;
+import br.org.semeando.digital.domain.pessoa.Contato;
 import br.org.semeando.digital.presentation.rest.cadastro.CadastroDtos.AtividadesRequest;
 import br.org.semeando.digital.presentation.rest.cadastro.CadastroDtos.AtualizarAlunoRequest;
 import br.org.semeando.digital.presentation.rest.cadastro.CadastroDtos.AuditoriaResponse;
@@ -16,9 +17,11 @@ import br.org.semeando.digital.presentation.rest.cadastro.CadastroDtos.Funcionar
 import br.org.semeando.digital.presentation.rest.cadastro.CadastroDtos.FuncionarioResponse;
 import br.org.semeando.digital.presentation.rest.cadastro.CadastroDtos.PrestadorRequest;
 import br.org.semeando.digital.presentation.rest.cadastro.CadastroDtos.PrestadorResponse;
+import br.org.semeando.digital.presentation.rest.cadastro.CadastroDtos.ResponsavelRequest;
 import br.org.semeando.digital.presentation.rest.cadastro.CadastroDtos.ProfessorRequest;
 import br.org.semeando.digital.presentation.rest.cadastro.CadastroDtos.ProfessorResponse;
 import br.org.semeando.digital.presentation.rest.cadastro.CadastroDtos.TurmaRequest;
+import br.org.semeando.digital.presentation.rest.auth.AuthController.ConviteResponse;
 import br.org.semeando.digital.presentation.rest.shared.Dtos.AlunoDetalhe;
 import br.org.semeando.digital.presentation.rest.shared.Dtos.AlunoResumo;
 import br.org.semeando.digital.presentation.rest.shared.Dtos.TurmaDto;
@@ -89,6 +92,21 @@ public class CadastroController {
             Ator ator) {
         alunos.atualizar(id, request.paraComando(), ator);
         return aluno(id);
+    }
+
+    @PutMapping("/alunos/{id}/responsavel")
+    @PreAuthorize(Perfis.SECRETARIA)
+    public AlunoDetalhe atualizarResponsavel(@PathVariable UUID id, @Valid @RequestBody ResponsavelRequest r,
+            Ator ator) {
+        alunos.atualizarResponsavel(id, r.nome(), new Contato(r.email(), r.telefone()), r.parentesco(), ator);
+        return aluno(id);
+    }
+
+    /** Link para o responsável criar a senha do portal (o e-mail ainda é simulado: a secretaria repassa o link). */
+    @PostMapping("/alunos/{id}/acesso-responsavel")
+    @PreAuthorize(Perfis.SECRETARIA)
+    public ConviteResponse acessoResponsavel(@PathVariable UUID id, Ator ator) {
+        return ConviteResponse.de(alunos.acessoDoResponsavel(id, ator));
     }
 
     /** Jiu Jitsu / Ballet: R$ 50,00 por atividade, cobrados na geração mensal. */

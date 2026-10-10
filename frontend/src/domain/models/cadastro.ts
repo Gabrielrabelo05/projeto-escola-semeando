@@ -1,4 +1,4 @@
-import type { DataISO, Perfil, Serie, UUID } from "./comum";
+import type { Autorizado, DataISO, Perfil, Serie, UUID } from "./comum";
 
 export interface Professor {
   id: UUID;
@@ -72,4 +72,24 @@ export interface RegistroAuditoria {
   entidadeId: string;
   detalhes: string | null;
   ocorridoEm: DataISO;
+}
+
+/** Edição da ficha do aluno (RF-31). */
+export interface AlunoForm {
+  nome: string;
+  dataNascimento: string;
+  alergias?: string;
+  tipoSanguineo?: string;
+  necessidadesEspeciais?: string;
+  hospitalEmergencia?: string;
+  autorizados: Autorizado[];
+  fotoUrl?: string | null;
+}
+
+/** Correção dos dados do responsável financeiro (o CPF não muda). */
+export interface ResponsavelForm {
+  nome: string;
+  email: string;
+  telefone: string;
+  parentesco: string;
 }

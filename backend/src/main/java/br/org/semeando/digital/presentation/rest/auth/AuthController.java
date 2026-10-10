@@ -1,6 +1,8 @@
 package br.org.semeando.digital.presentation.rest.auth;
 
 import br.org.semeando.digital.application.auth.AutenticacaoUseCase;
+import br.org.semeando.digital.application.auth.ConvitesAcessoUseCase;
+import br.org.semeando.digital.application.auth.EmissorConvite.Convite;
 import br.org.semeando.digital.application.shared.Ator;
 import br.org.semeando.digital.domain.usuario.Perfil;
 import br.org.semeando.digital.domain.usuario.Usuario;
@@ -9,6 +11,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
@@ -27,9 +30,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
 
     private final AutenticacaoUseCase autenticacao;
+    private final ConvitesAcessoUseCase convites;
 
-    public AuthController(AutenticacaoUseCase autenticacao) {
+    public AuthController(AutenticacaoUseCase autenticacao, ConvitesAcessoUseCase convites) {
         this.autenticacao = autenticacao;
+        this.convites = convites;
     }
 
     @PostMapping("/auth/login")
@@ -49,11 +54,19 @@ public class AuthController {
         return autenticacao.listar().stream().map(UsuarioResponse::de).toList();
     }
 
+    /** Cria o acesso sem senha e devolve o link para a pessoa definir a própria senha. */
     @PostMapping("/usuarios")
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize(Perfis.ADMIN)
-    public UsuarioResponse criar(@Valid @RequestBody NovoUsuarioRequest r, Ator ator) {
-        return UsuarioResponse.de(autenticacao.criar(r.nome(), r.email(), r.senha(), r.perfil(), r.cpf(), ator));
+    public ConviteResponse criar(@Valid @RequestBody NovoUsuarioRequest r, Ator ator) {
+        return ConviteResponse.de(convites.convidar(r.nome(), r.email(), r.perfil(), r.cpf(), ator));
+    }
+
+    /** Novo link de acesso: reenvio do convite ou redefinição de senha. */
+    @PostMapping("/usuarios/{id}/link-acesso")
+    @PreAuthorize(Perfis.ADMIN)
+    public ConviteResponse novoLink(@PathVariable UUID id, Ator ator) {
+        return ConviteResponse.de(convites.novoLink(id, ator));
     }
 
     @PatchMapping("/usuarios/{id}/inativar")
@@ -62,20 +75,42 @@ public class AuthController {
         return UsuarioResponse.de(autenticacao.inativar(id, ator));
     }
 
+    @GetMapping("/publico/convites/{token}")
+    public UsuarioResponse convite(@PathVariable String token) {
+        return UsuarioResponse.de(convites.consultar(token));
+    }
+
+    @PostMapping("/publico/convites/{token}/senha")
+    public UsuarioResponse definirSenha(@PathVariable String token, @Valid @RequestBody DefinirSenhaRequest r) {
+        return UsuarioResponse.de(convites.definirSenha(token, r.senha()));
+    }
+
     public record LoginRequest(@NotBlank @Email String email, @NotBlank String senha) {
     }
 
-    public record NovoUsuarioRequest(@NotBlank String nome, @NotBlank @Email String email, @NotBlank String senha,
-            @NotNull Perfil perfil, String cpf) {
+    public record NovoUsuarioRequest(@NotBlank String nome, @NotBlank @Email String email, @NotNull Perfil perfil,
+            String cpf) {
+    }
+
+    public record DefinirSenhaRequest(@NotBlank String senha) {
     }
 
     public record SessaoResponse(String token, UsuarioResponse usuario) {
     }
 
-    public record UsuarioResponse(UUID id, String nome, String email, Perfil perfil, boolean ativo) {
+    /** {@code acessoPendente}: o usuário ainda não definiu a senha pelo link. */
+    public record UsuarioResponse(UUID id, String nome, String email, Perfil perfil, boolean ativo,
+            boolean acessoPendente) {
 
-        static UsuarioResponse de(Usuario u) {
-            return new UsuarioResponse(u.id(), u.nome(), u.email(), u.perfil(), u.ativo());
+        public static UsuarioResponse de(Usuario u) {
+            return new UsuarioResponse(u.id(), u.nome(), u.email(), u.perfil(), u.ativo(), !u.possuiSenha());
+        }
+    }
+
+    public record ConviteResponse(UsuarioResponse usuario, String link, Instant expiraEm) {
+
+        public static ConviteResponse de(Convite c) {
+            return new ConviteResponse(UsuarioResponse.de(c.usuario()), c.link(), c.expiraEm());
         }
     }
 }

@@ -6,7 +6,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 
 @ConfigurationProperties("semeando")
 public record SemeandoProperties(Instituicao instituicao, Valores valores, Seguranca seguranca, Cora cora,
-        Inpc inpc, Seed seed) {
+        Inpc inpc, Web web, Seed seed) {
 
     public record Instituicao(String nome, String cnpj) {
     }
@@ -28,6 +28,10 @@ public record SemeandoProperties(Instituicao instituicao, Valores valores, Segur
 
     /** {@code modo}: "ibge" consulta a série do INPC no SIDRA; "nenhum" desliga a correção monetária. */
     public record Inpc(String modo, String url) {
+    }
+
+    /** Endereço do frontend, usado nos links de acesso enviados por e-mail. */
+    public record Web(String url) {
     }
 
     public record Seed(boolean habilitado) {

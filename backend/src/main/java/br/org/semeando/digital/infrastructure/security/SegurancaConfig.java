@@ -42,6 +42,7 @@ public class SegurancaConfig {
                         .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/pre-matriculas").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/publico/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/publico/convites/*/senha").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/webhooks/cora").permitAll()
                         .requestMatchers("/actuator/health").permitAll()
                         .anyRequest().authenticated())

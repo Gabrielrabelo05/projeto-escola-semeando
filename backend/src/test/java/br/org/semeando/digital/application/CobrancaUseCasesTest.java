@@ -9,6 +9,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import br.org.semeando.digital.application.auditoria.Auditor;
+import br.org.semeando.digital.application.auth.EmissorConvite;
 import br.org.semeando.digital.application.cobranca.ConfirmarPagamentoUseCase;
 import br.org.semeando.digital.application.cobranca.EmissorCobranca;
 import br.org.semeando.digital.application.cobranca.GerarCobrancasMensaisUseCase;
@@ -40,6 +41,8 @@ import br.org.semeando.digital.domain.turma.NivelEnsino;
 import br.org.semeando.digital.domain.turma.Serie;
 import br.org.semeando.digital.domain.turma.Turma;
 import br.org.semeando.digital.domain.turma.TurmaRepository;
+import br.org.semeando.digital.domain.usuario.Perfil;
+import br.org.semeando.digital.domain.usuario.UsuarioRepository;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -68,6 +71,10 @@ class CobrancaUseCasesTest {
     TurmaRepository turmas;
     @Mock
     CoraGateway cora;
+    @Mock
+    EmissorConvite convites;
+    @Mock
+    UsuarioRepository usuarios;
     @Mock
     EmissorCobranca emissor;
     @Mock
@@ -160,7 +167,8 @@ class CobrancaUseCasesTest {
         when(matriculas.buscarPorPrimeiraParcela(primeiraParcela.id())).thenReturn(Optional.of(matricula));
         when(responsaveis.buscarPorId(responsavel.id())).thenReturn(Optional.of(responsavel));
 
-        var useCase = new ConfirmarPagamentoUseCase(cobrancas, matriculas, alunos, responsaveis, notificador, auditor);
+        var useCase = new ConfirmarPagamentoUseCase(cobrancas, matriculas, alunos, responsaveis, notificador,
+                convites, usuarios, auditor);
         useCase.processarWebhook("cora-123", Fixtures.HOJE, Dinheiro.de("279.00"));
 
         assertThat(primeiraParcela.status()).isEqualTo(StatusCobranca.PAGA);
@@ -168,6 +176,9 @@ class CobrancaUseCasesTest {
         assertThat(aluno.status()).isEqualTo(StatusAluno.ATIVO);
         verify(notificador).responsavel(eq(responsavel), eq("Recibo de pagamento"), any());
         verify(notificador).responsavel(eq(responsavel), eq("Matrícula confirmada"), any());
+        // Responsável ainda sem login recebe o link para criar a senha do portal
+        verify(convites).convidar(responsavel.nome(), responsavel.contato().email(), Perfil.RESPONSAVEL,
+                responsavel.cpf());
     }
 
     private GerarCobrancasMensaisUseCase useCaseGeracao() {

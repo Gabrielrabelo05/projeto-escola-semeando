@@ -1,6 +1,7 @@
 package br.org.semeando.digital.application.cobranca;
 
 import br.org.semeando.digital.application.auditoria.Auditor;
+import br.org.semeando.digital.application.auth.EmissorConvite;
 import br.org.semeando.digital.application.shared.Ator;
 import br.org.semeando.digital.application.shared.CasoDeUso;
 import br.org.semeando.digital.application.shared.Notificador;
@@ -12,10 +13,13 @@ import br.org.semeando.digital.domain.cobranca.CobrancaRepository;
 import br.org.semeando.digital.domain.cobranca.FormaPagamento;
 import br.org.semeando.digital.domain.cobranca.Pagamento;
 import br.org.semeando.digital.domain.matricula.MatriculaRepository;
+import br.org.semeando.digital.domain.pessoa.Responsavel;
 import br.org.semeando.digital.domain.pessoa.ResponsavelRepository;
 import br.org.semeando.digital.domain.shared.Dinheiro;
 import br.org.semeando.digital.domain.shared.IdentidadeInstitucional;
 import br.org.semeando.digital.domain.shared.RecursoNaoEncontradoException;
+import br.org.semeando.digital.domain.usuario.Perfil;
+import br.org.semeando.digital.domain.usuario.UsuarioRepository;
 import java.time.LocalDate;
 import java.util.UUID;
 
@@ -31,15 +35,20 @@ public class ConfirmarPagamentoUseCase {
     private final AlunoRepository alunos;
     private final ResponsavelRepository responsaveis;
     private final Notificador notificador;
+    private final EmissorConvite convites;
+    private final UsuarioRepository usuarios;
     private final Auditor auditor;
 
     public ConfirmarPagamentoUseCase(CobrancaRepository cobrancas, MatriculaRepository matriculas,
-            AlunoRepository alunos, ResponsavelRepository responsaveis, Notificador notificador, Auditor auditor) {
+            AlunoRepository alunos, ResponsavelRepository responsaveis, Notificador notificador,
+            EmissorConvite convites, UsuarioRepository usuarios, Auditor auditor) {
         this.cobrancas = cobrancas;
         this.matriculas = matriculas;
         this.alunos = alunos;
         this.responsaveis = responsaveis;
         this.notificador = notificador;
+        this.convites = convites;
+        this.usuarios = usuarios;
         this.auditor = auditor;
     }
 
@@ -77,11 +86,24 @@ public class ConfirmarPagamentoUseCase {
             matriculas.salvar(matricula);
             aluno.ativar();
             alunos.salvar(aluno);
-            responsaveis.buscarPorId(aluno.responsavelId()).ifPresent(responsavel -> notificador.responsavel(
-                    responsavel, "Matrícula confirmada",
-                    "A matrícula de " + aluno.nome() + " está ATIVA. Acesse o portal do responsável com o seu "
-                            + "e-mail para acompanhar boletos, presença, documentos e lista de materiais."));
+            responsaveis.buscarPorId(aluno.responsavelId()).ifPresent(responsavel -> {
+                boolean convidado = convidarParaOPortal(responsavel);
+                notificador.responsavel(responsavel, "Matrícula confirmada",
+                        "A matrícula de " + aluno.nome() + " está ATIVA. Acesse o portal do responsável com o seu "
+                                + "e-mail para acompanhar boletos, presença, documentos e lista de materiais."
+                                + (convidado ? " Você vai receber um link para criar a sua senha." : ""));
+            });
         });
+    }
+
+    /** Responsável sem acesso recebe o link para criar a senha do portal (passo 15 do fluxo). */
+    private boolean convidarParaOPortal(Responsavel responsavel) {
+        String email = responsavel.contato().email();
+        if (email == null || email.isBlank() || usuarios.buscarPorEmail(email.trim().toLowerCase()).isPresent()) {
+            return false;
+        }
+        convites.convidar(responsavel.nome(), email, Perfil.RESPONSAVEL, responsavel.cpf());
+        return true;
     }
 
     /** RF-30: recibo enviado por e-mail após a confirmação do pagamento. */

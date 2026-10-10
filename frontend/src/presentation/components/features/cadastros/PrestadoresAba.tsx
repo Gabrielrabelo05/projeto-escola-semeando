@@ -16,6 +16,7 @@ import { useCarregar } from "@/presentation/hooks/useCarregar";
 import { data } from "@/presentation/lib/formatadores";
 import { useGateways } from "@/presentation/providers/GatewayProvider";
 import { prestadorSchema } from "@/presentation/schemas/cadastros";
+import { BotaoAcesso } from "./BotaoAcesso";
 import { FormularioDialog } from "./FormularioDialog";
 
 type Form = z.input<typeof prestadorSchema>;
@@ -94,6 +95,17 @@ export function PrestadoresAba() {
                     <Badge>Vigente</Badge>
                   ) : (
                     <Badge variant="destructive">Vencido</Badge>
+                  ),
+              },
+              {
+                titulo: "",
+                celula: (p) =>
+                  p.ativo && (
+                    <BotaoAcesso
+                      nome={p.nome}
+                      email={p.email}
+                      perfil="PRESTADOR"
+                    />
                   ),
               },
             ]}

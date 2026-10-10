@@ -1,5 +1,6 @@
 import type { AuthGateway } from "@/domain/gateways";
 import type {
+  ConviteAcesso,
   Credenciais,
   NovoUsuario,
   Sessao,
@@ -19,11 +20,26 @@ export class HttpAuthGateway implements AuthGateway {
     return this.http.get("/usuarios");
   }
 
-  criarUsuario(dados: NovoUsuario): Promise<Usuario> {
+  criarUsuario(dados: NovoUsuario): Promise<ConviteAcesso> {
     return this.http.post("/usuarios", dados);
+  }
+
+  novoLinkAcesso(id: UUID): Promise<ConviteAcesso> {
+    return this.http.post(`/usuarios/${id}/link-acesso`);
   }
 
   inativarUsuario(id: UUID): Promise<Usuario> {
     return this.http.patch(`/usuarios/${id}/inativar`);
+  }
+
+  consultarConvite(token: string): Promise<Usuario> {
+    return this.http.get(`/publico/convites/${encodeURIComponent(token)}`);
+  }
+
+  definirSenha(token: string, senha: string): Promise<Usuario> {
+    return this.http.post(
+      `/publico/convites/${encodeURIComponent(token)}/senha`,
+      { senha },
+    );
   }
 }

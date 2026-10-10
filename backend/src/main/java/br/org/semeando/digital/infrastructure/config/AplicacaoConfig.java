@@ -1,6 +1,7 @@
 package br.org.semeando.digital.infrastructure.config;
 
 import br.org.semeando.digital.application.auditoria.Auditor;
+import br.org.semeando.digital.application.auth.EmissorConvite;
 import br.org.semeando.digital.application.cobranca.EmissorCobranca;
 import br.org.semeando.digital.application.matricula.MatriculaContexto;
 import br.org.semeando.digital.application.pedagogico.ProfessorLogado;
@@ -21,6 +22,8 @@ import br.org.semeando.digital.domain.pessoa.ResponsavelRepository;
 import br.org.semeando.digital.domain.shared.Dinheiro;
 import br.org.semeando.digital.domain.shared.IdentidadeInstitucional;
 import br.org.semeando.digital.domain.turma.TurmaRepository;
+import br.org.semeando.digital.domain.usuario.ConviteAcessoRepository;
+import br.org.semeando.digital.domain.usuario.UsuarioRepository;
 import br.org.semeando.digital.infrastructure.gateway.cora.CoraFakeGateway;
 import br.org.semeando.digital.infrastructure.gateway.cora.CoraHttpGateway;
 import br.org.semeando.digital.infrastructure.gateway.inpc.InpcIbgeIndice;
@@ -70,6 +73,15 @@ public class AplicacaoConfig {
     @Bean
     GeradorDocumentoVinculo geradorDocumentoVinculo(TabelaValores tabela) {
         return new GeradorDocumentoVinculo(tabela);
+    }
+
+    /** Sem {@code semeando.web.url}, usa a primeira origem do CORS (o próprio frontend). */
+    @Bean
+    EmissorConvite emissorConvite(UsuarioRepository usuarios, ConviteAcessoRepository convites,
+            NotificacaoGateway notificacoes, SemeandoProperties props, Clock clock) {
+        String url = props.web() == null || props.web().url() == null || props.web().url().isBlank()
+                ? props.seguranca().corsOrigens().getFirst() : props.web().url();
+        return new EmissorConvite(usuarios, convites, notificacoes, url, clock);
     }
 
     @Bean

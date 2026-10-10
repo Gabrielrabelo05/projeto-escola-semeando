@@ -33,10 +33,11 @@ Stack completa em containers: `docker compose --profile app up -d --build`.
 
 Publicar na internet (Supabase + Render + Vercel): veja [DEPLOY.md](DEPLOY.md).
 
-### Usuários sintéticos (RN-08)
+### Usuários de demonstração (RN-08)
 
-Na primeira execução o sistema carrega **apenas dados sintéticos**, percorrendo os próprios casos de uso
-(matrícula → contrato → pagamento → cobrança). Senha de todos: **`Semeando@2026`**.
+Na primeira execução o sistema carrega **dados fictícios** (nomes realistas, CPFs gerados, e-mails em
+`example.com`), percorrendo os próprios casos de uso (matrícula → contrato → pagamento → cobrança →
+inadimplência). Senha dos usuários abaixo: **`Semeando@2026`**.
 
 | E-mail                       | Perfil        |
 |------------------------------|---------------|
@@ -49,6 +50,12 @@ Na primeira execução o sistema carrega **apenas dados sintéticos**, percorren
 | `prestador@semeando.dev`     | Prestador     |
 
 O formulário público de pré-matrícula fica em `/pre-matricula`.
+
+**Acesso de novas pessoas:** ninguém digita a senha de outra pessoa. O administrador cria o acesso em
+*Usuários* (ou no botão **Acesso** de professores, funcionários e prestadores em *Cadastros*) e recebe um
+link `/definir-senha?token=…`, de uso único e válido por 7 dias, para repassar por e-mail ou WhatsApp. O
+responsável recebe o convite quando a matrícula é ativada, e a secretaria pode gerar o link na ficha do
+aluno. O mesmo botão serve para redefinir a senha de quem esqueceu.
 
 ---
 
@@ -186,3 +193,4 @@ Ainda não implementado:
   payload contra a API real. Por padrão roda o `CoraFakeGateway`.
 * Testes de carga (RNF-02) e monitoramento de uptime (RNF-03).
 * Categorias de sócio (Fundador, Efetivo, Mantenedor CI/CII/CIII) da ficha de associado.
+* "Esqueci a senha" pelo próprio usuário: hoje o administrador gera um novo link de acesso.

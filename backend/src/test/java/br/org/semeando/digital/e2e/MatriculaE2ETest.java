@@ -44,7 +44,7 @@ class MatriculaE2ETest {
 
         // RF-01: pré-matrícula pública
         String matricula = mvc.perform(post("/api/pre-matriculas").contentType(MediaType.APPLICATION_JSON)
-                        .content(preMatricula("Bruno E2E Sintético", CPF_RESPONSAVEL, turmaId, true)))
+                        .content(preMatricula("Bruno Costa Ferreira", CPF_RESPONSAVEL, turmaId, true)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.status").value("AGUARDANDO_ANALISE"))
                 .andExpect(jsonPath("$.documentos.length()").value(6))
@@ -115,12 +115,12 @@ class MatriculaE2ETest {
         mvc.perform(autenticado(post("/api/cobrancas/gerar-mensal"), financeiro)
                         .contentType(MediaType.APPLICATION_JSON).content("{\"mes\":\"" + mes + "\"}"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.geradas", hasItem("Bruno E2E Sintético")));
+                .andExpect(jsonPath("$.geradas", hasItem("Bruno Costa Ferreira")));
 
         // Portal do responsável
         mvc.perform(autenticado(get("/api/portal/filhos"), responsavel))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].aluno.nome").value("Bruno E2E Sintético"))
+                .andExpect(jsonPath("$[0].aluno.nome").value("Bruno Costa Ferreira"))
                 .andExpect(jsonPath("$[0].statusMatricula").value("ATIVA"));
 
         // RF-36: as ações ficam registradas na auditoria
@@ -166,12 +166,35 @@ class MatriculaE2ETest {
         return ids.getFirst();
     }
 
+    /** RF-35: o acesso é criado por convite; a própria pessoa define a senha pelo link de uso único. */
     private void criarUsuarioResponsavel(String admin) throws Exception {
-        mvc.perform(autenticado(post("/api/usuarios"), admin).contentType(MediaType.APPLICATION_JSON)
+        String convite = mvc.perform(autenticado(post("/api/usuarios"), admin).contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"nome":"Pai E2E","email":"bruno.pai@exemplo.dev","senha":"%s",
-                                 "perfil":"RESPONSAVEL","cpf":"%s"}""".formatted(SENHA, CPF_RESPONSAVEL)))
-                .andExpect(status().isCreated());
+                                {"nome":"Pai E2E","email":"bruno.pai@exemplo.dev","perfil":"RESPONSAVEL","cpf":"%s"}
+                                """.formatted(CPF_RESPONSAVEL)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.usuario.acessoPendente").value(true))
+                .andReturn().getResponse().getContentAsString();
+        String link = JsonPath.read(convite, "$.link");
+        String token = link.substring(link.indexOf("token=") + "token=".length());
+
+        // Sem senha definida, o login é recusado
+        mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"bruno.pai@exemplo.dev\",\"senha\":\"qualquer-coisa\"}"))
+                .andExpect(status().isUnauthorized());
+        mvc.perform(get("/api/publico/convites/" + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.email").value("bruno.pai@exemplo.dev"));
+        String senha = "{\"senha\":\"%s\"}".formatted(SENHA);
+        mvc.perform(post("/api/publico/convites/" + token + "/senha").contentType(MediaType.APPLICATION_JSON)
+                        .content(senha))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.acessoPendente").value(false));
+        // O link só vale uma vez
+        mvc.perform(post("/api/publico/convites/" + token + "/senha").contentType(MediaType.APPLICATION_JSON)
+                        .content(senha))
+                .andExpect(status().isUnprocessableContent())
+                .andExpect(jsonPath("$.codigo").value("CONVITE_INVALIDO"));
     }
 
     private static MockHttpServletRequestBuilder autenticado(MockHttpServletRequestBuilder req, String token) {
@@ -185,7 +208,7 @@ class MatriculaE2ETest {
         return """
                 {
                   "aluno": {"nome":"%s","dataNascimento":"2019-02-10","alergias":"Lactose","tipoSanguineo":"A+",
-                            "necessidadesEspeciais":null,"hospitalEmergencia":"Hospital Sintético",
+                            "necessidadesEspeciais":null,"hospitalEmergencia":"Hospital São Domingos",
                             "autorizados":%s},
                   "responsavel": {"nome":"Pai E2E","cpf":"%s","email":"bruno.pai@exemplo.dev",
                                   "telefone":"98911112222","parentesco":"Pai"},

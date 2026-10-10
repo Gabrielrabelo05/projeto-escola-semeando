@@ -65,6 +65,9 @@ semeando:
     url: ${CORA_URL:https://matls-clients.api.stage.cora.com.br}
     token: ${CORA_TOKEN:}
     webhook-segredo: ${CORA_WEBHOOK_SECRET:dev-webhook-secret}
+  web:
+    # Endereço do frontend nos links de acesso; vazio = primeira origem de CORS_ORIGINS.
+    url: ${WEB_URL:}
   inpc:
     # "ibge" usa a série oficial do INPC (API pública SIDRA); "nenhum" desliga a correção monetária.
     modo: ${INPC_MODE:ibge}

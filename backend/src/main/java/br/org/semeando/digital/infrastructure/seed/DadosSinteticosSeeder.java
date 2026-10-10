@@ -26,6 +26,7 @@ import br.org.semeando.digital.application.shared.Ator;
 import br.org.semeando.digital.domain.aluno.AtividadeExtracurricular;
 import br.org.semeando.digital.domain.aluno.InformacoesMedicas;
 import br.org.semeando.digital.domain.aluno.PessoaAutorizada;
+import br.org.semeando.digital.domain.cobranca.CobrancaRepository;
 import br.org.semeando.digital.domain.cobranca.FormaPagamento;
 import br.org.semeando.digital.domain.contrato.DocumentoVinculo;
 import br.org.semeando.digital.domain.contrato.TabelaValores;
@@ -47,7 +48,6 @@ import br.org.semeando.digital.domain.usuario.Usuario;
 import br.org.semeando.digital.domain.usuario.UsuarioRepository;
 import br.org.semeando.digital.infrastructure.config.SemeandoProperties;
 import java.nio.charset.StandardCharsets;
-import java.text.Normalizer;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.YearMonth;
@@ -62,14 +62,18 @@ import org.springframework.boot.ApplicationRunner;
 import org.springframework.stereotype.Component;
 
 /**
- * RN-08: popula o ambiente de desenvolvimento apenas com dados sintéticos, exercitando os
- * próprios casos de uso (fluxo completo de matrícula, contrato, pagamento e cobrança).
+ * RN-08: popula o ambiente com dados de demonstração fictícios (nomes realistas, CPFs gerados e e-mails em
+ * example.com), exercitando os próprios casos de uso (matrícula, contrato, pagamento, cobrança e inadimplência).
  */
 @Component
 class DadosSinteticosSeeder implements ApplicationRunner {
 
     static final String SENHA_PADRAO = "Semeando@2026";
     private static final Logger LOG = LoggerFactory.getLogger(DadosSinteticosSeeder.class);
+
+    /** Responsável com login de demonstração (responsavel@semeando.dev). */
+    private static final Responsavel MARIA = new Responsavel("Maria Fernanda Oliveira Santos",
+            CpfSintetico.de("209347516"), "responsavel@semeando.dev", "98987112034", "Mãe");
 
     private final SemeandoProperties props;
     private final TabelaValores tabela;
@@ -86,6 +90,7 @@ class DadosSinteticosSeeder implements ApplicationRunner {
     private final ContratosUseCase contratos;
     private final ConfirmarPagamentoUseCase pagamentos;
     private final GerarCobrancasMensaisUseCase cobrancas;
+    private final CobrancaRepository cobrancasRepo;
     private final ObrigacoesUseCase obrigacoes;
     private final PlanejamentoCalendarioUseCase calendario;
     private final ListaMateriaisUseCase listas;
@@ -98,7 +103,7 @@ class DadosSinteticosSeeder implements ApplicationRunner {
             FuncionariosUseCase funcionarios, PrestadoresUseCase prestadores,
             TurmasUseCase turmas, SolicitarPreMatriculaUseCase preMatricula, AnalisarMatriculaUseCase analise,
             GerenciarMatriculaUseCase gerenciar, ContratosUseCase contratos, ConfirmarPagamentoUseCase pagamentos,
-            GerarCobrancasMensaisUseCase cobrancas, ObrigacoesUseCase obrigacoes,
+            GerarCobrancasMensaisUseCase cobrancas, CobrancaRepository cobrancasRepo, ObrigacoesUseCase obrigacoes,
             PlanejamentoCalendarioUseCase calendario, ListaMateriaisUseCase listas, DiarioClasseUseCase diario,
             Clock clock) {
         this.props = props;
@@ -116,6 +121,7 @@ class DadosSinteticosSeeder implements ApplicationRunner {
         this.contratos = contratos;
         this.pagamentos = pagamentos;
         this.cobrancas = cobrancas;
+        this.cobrancasRepo = cobrancasRepo;
         this.obrigacoes = obrigacoes;
         this.calendario = calendario;
         this.listas = listas;
@@ -128,59 +134,103 @@ class DadosSinteticosSeeder implements ApplicationRunner {
         if (!props.seed().habilitado() || !usuarios.listar().isEmpty()) {
             return;
         }
-        LOG.info("Carregando dados sintéticos de desenvolvimento (RN-08)...");
-        int ano = LocalDate.now(clock).getYear();
-        String cpfProfessora = CpfSintetico.de("100000001");
-        String cpfResponsavel = CpfSintetico.de("200000002");
+        LOG.info("Carregando dados de demonstração (fictícios, RN-08)...");
+        LocalDate hoje = LocalDate.now(clock);
+        int ano = hoje.getYear();
+        String cpfProfessora = CpfSintetico.de("381245906");
 
-        Professor professora = professores.cadastrar(new DadosProfessor("Ana Beatriz Sintética", cpfProfessora,
-                new Contato("professora@semeando.dev", "98900000001"), "0000001", "Pedagogia",
+        Professor professora = professores.cadastrar(new DadosProfessor("Ana Beatriz Costa Lima", cpfProfessora,
+                new Contato("professora@semeando.dev", "98988127745"), "045218796", "Pedagogia (UFMA)",
                 List.of("Alfabetização", "Matemática"), 40), sistema);
+        professores.cadastrar(new DadosProfessor("Carlos Eduardo Nunes", CpfSintetico.de("527814360"),
+                new Contato("carlos.nunes@example.com", "98991453302"), "038114527", "Licenciatura em Educação Física",
+                List.of("Educação Física", "Jiu Jitsu"), 20), sistema);
         cadastrarEquipe();
-        criarUsuarios(cpfProfessora, cpfResponsavel);
+        criarUsuarios(cpfProfessora);
         Map<Serie, Turma> turmasDoAno = criarTurmas(ano, professora);
 
-        Matricula fundamental = matricularAteAtivar("Lucas Sintético", LocalDate.of(ano - 6, 4, 12),
-                cpfResponsavel, "Maria Responsável Sintética", turmasDoAno.get(Serie.PRIMEIRO_ANO));
-        matricularSemPagar("Clara Sintética", LocalDate.of(ano - 3, 8, 2), cpfResponsavel,
-                "Maria Responsável Sintética", turmasDoAno.get(Serie.MATERNAL_II));
-        preMatricula.executar(comando("Pedro Aguardando", LocalDate.of(ano - 8, 1, 20), CpfSintetico.de("300000003"),
-                "João Responsável Sintético", turmasDoAno.get(Serie.TERCEIRO_ANO)), Ator.anonimo());
-        alunos.definirAtividades(fundamental.alunoId(), Set.of(AtividadeExtracurricular.JIU_JITSU), sistema);
+        Matricula lucas = matricularAteAtivar(new Familia("Lucas Oliveira Santos", LocalDate.of(ano - 6, 4, 12),
+                MARIA, "Hospital da Criança Dr. Odorico Amaral de Matos",
+                new PessoaAutorizada("Raimunda Oliveira", "RG 018745236 SSP/MA", "Avó", "98987451230")),
+                turmasDoAno.get(Serie.PRIMEIRO_ANO));
+        matricularAteAtivar(new Familia("Helena Oliveira Santos", LocalDate.of(ano - 3, 8, 2), MARIA,
+                "Hospital da Criança Dr. Odorico Amaral de Matos",
+                new PessoaAutorizada("Raimunda Oliveira", "RG 018745236 SSP/MA", "Avó", "98987451230")),
+                turmasDoAno.get(Serie.MATERNAL_II));
+        Matricula isabela = matricularAteAtivar(new Familia("Isabela Carvalho Rocha", LocalDate.of(ano - 8, 1, 20),
+                new Responsavel("Fernanda Carvalho Rocha", CpfSintetico.de("614378205"),
+                        "fernanda.rocha@example.com", "98984126673", "Mãe"),
+                "Hospital São Domingos",
+                new PessoaAutorizada("Paulo Henrique Rocha", "RG 027415896 SSP/MA", "Pai", "98981204478")),
+                turmasDoAno.get(Serie.TERCEIRO_ANO));
+        Matricula gabriel = matricularAteAtivar(new Familia("Gabriel Henrique Alves", LocalDate.of(ano - 10, 6, 3),
+                new Responsavel("José Ricardo Alves", CpfSintetico.de("702563418"), "jose.alves@example.com",
+                        "98985567012", "Pai"),
+                "Hospital UDI",
+                new PessoaAutorizada("Sandra Alves", "RG 031254789 SSP/MA", "Tia", "98988341196")),
+                turmasDoAno.get(Serie.QUINTO_ANO));
+        matricularSemPagar(new Familia("Miguel Souza Barros", LocalDate.of(ano - 5, 11, 15),
+                new Responsavel("Juliana Souza Barros", CpfSintetico.de("835127640"), "juliana.barros@example.com",
+                        "98982236645", "Mãe"),
+                "Hospital São Domingos",
+                new PessoaAutorizada("Antônio Barros", "RG 014785236 SSP/MA", "Avô", "98987002314")),
+                turmasDoAno.get(Serie.INFANTIL_2));
+        preMatricula.executar(comando(new Familia("Laura Mendes Pires", LocalDate.of(ano - 7, 3, 28),
+                new Responsavel("Camila Mendes Pires", CpfSintetico.de("946281573"), "camila.pires@example.com",
+                        "98983318820", "Mãe"),
+                "Hospital UDI",
+                new PessoaAutorizada("Roberto Pires", "RG 025874136 SSP/MA", "Pai", "98986657731")),
+                turmasDoAno.get(Serie.SEGUNDO_ANO), true), Ator.anonimo());
+        alunos.definirAtividades(lucas.alunoId(), Set.of(AtividadeExtracurricular.JIU_JITSU), sistema);
+        alunos.definirAtividades(isabela.alunoId(), Set.of(AtividadeExtracurricular.BALLET), sistema);
 
-        cobrancas.executar(new MesReferencia(YearMonth.now(clock)), sistema);
-        registrarDiario(turmasDoAno.get(Serie.PRIMEIRO_ANO), fundamental, cpfProfessora);
+        gerarMesAnteriorComInadimplencia(hoje, gabriel);
+        cobrancas.executar(new MesReferencia(YearMonth.from(hoje)), sistema);
+        registrarDiario(turmasDoAno.get(Serie.PRIMEIRO_ANO), lucas, cpfProfessora);
         obrigacoes.gerarCalendarioAnual(ano, "Secretaria Escolar", sistema);
         criarCalendario(ano);
         publicarListaMateriais(ano);
-        LOG.info("Dados sintéticos carregados. Senha padrão de todos os usuários: {}", SENHA_PADRAO);
+        LOG.info("Dados de demonstração carregados. Senha padrão dos usuários de teste: {}", SENHA_PADRAO);
     }
 
-    private void criarUsuarios(String cpfProfessora, String cpfResponsavel) {
-        autenticacao.criar("Administrador do Sistema", "admin@semeando.dev", SENHA_PADRAO, Perfil.ADMIN, null, sistema);
-        autenticacao.criar("Diretora Sintética", "diretora@semeando.dev", SENHA_PADRAO, Perfil.DIRETOR, null, sistema);
-        autenticacao.criar("Secretária Sintética", "secretaria@semeando.dev", SENHA_PADRAO, Perfil.SECRETARIA, null,
+    /** Cobranças do mês anterior: todas pagas no prazo, menos a do aluno informado (aparece na inadimplência). */
+    private void gerarMesAnteriorComInadimplencia(LocalDate hoje, Matricula inadimplente) {
+        MesReferencia anterior = new MesReferencia(YearMonth.from(hoje).minusMonths(1));
+        cobrancas.executar(anterior, sistema);
+        cobrancasRepo.listarPorMes(anterior).stream()
+                .filter(c -> !c.alunoId().equals(inadimplente.alunoId()))
+                .forEach(c -> pagamentos.registrarManual(c.id(), c.vencimento().minusDays(2), c.valorComDesconto(),
+                        c.boleto() == null ? FormaPagamento.DINHEIRO : FormaPagamento.BOLETO, sistema));
+    }
+
+    private void criarUsuarios(String cpfProfessora) {
+        autenticacao.criar("Rafael Mendes Araújo", "admin@semeando.dev", SENHA_PADRAO, Perfil.ADMIN, null, sistema);
+        autenticacao.criar("Luciana Ribeiro Matos", "diretora@semeando.dev", SENHA_PADRAO, Perfil.DIRETOR, null,
                 sistema);
-        autenticacao.criar("Financeiro Sintético", "financeiro@semeando.dev", SENHA_PADRAO, Perfil.FINANCEIRO, null,
-                sistema);
-        autenticacao.criar("Ana Beatriz Sintética", "professora@semeando.dev", SENHA_PADRAO, Perfil.PROFESSOR,
-                cpfProfessora, sistema);
-        autenticacao.criar("Maria Responsável Sintética", "responsavel@semeando.dev", SENHA_PADRAO,
-                Perfil.RESPONSAVEL, cpfResponsavel, sistema);
-        autenticacao.criar("Transportes Sintéticos LTDA", "prestador@semeando.dev", SENHA_PADRAO, Perfil.PRESTADOR,
+        autenticacao.criar("Patrícia Gomes da Silva", "secretaria@semeando.dev", SENHA_PADRAO, Perfil.SECRETARIA,
                 null, sistema);
+        autenticacao.criar("Marcos Antônio Pereira", "financeiro@semeando.dev", SENHA_PADRAO, Perfil.FINANCEIRO,
+                null, sistema);
+        autenticacao.criar("Ana Beatriz Costa Lima", "professora@semeando.dev", SENHA_PADRAO, Perfil.PROFESSOR,
+                cpfProfessora, sistema);
+        autenticacao.criar(MARIA.nome(), MARIA.email(), SENHA_PADRAO, Perfil.RESPONSAVEL, MARIA.cpf(), sistema);
+        autenticacao.criar("Rota Kids Transporte Escolar LTDA", "prestador@semeando.dev", SENHA_PADRAO,
+                Perfil.PRESTADOR, null, sistema);
     }
 
     private void cadastrarEquipe() {
-        funcionarios.cadastrar(new DadosFuncionario("Secretária Sintética", CpfSintetico.de("400000004"),
-                new Contato("secretaria@semeando.dev", null), "Secretária Escolar", "Secretaria", Perfil.SECRETARIA),
-                sistema);
-        funcionarios.cadastrar(new DadosFuncionario("Financeiro Sintético", CpfSintetico.de("500000005"),
-                new Contato("financeiro@semeando.dev", null), "Assistente Financeiro", "Financeiro",
+        funcionarios.cadastrar(new DadosFuncionario("Patrícia Gomes da Silva", CpfSintetico.de("458120397"),
+                new Contato("secretaria@semeando.dev", "98981447230"), "Secretária Escolar", "Secretaria",
+                Perfil.SECRETARIA), sistema);
+        funcionarios.cadastrar(new DadosFuncionario("Marcos Antônio Pereira", CpfSintetico.de("563092184"),
+                new Contato("financeiro@semeando.dev", "98984702215"), "Assistente Financeiro", "Financeiro",
                 Perfil.FINANCEIRO), sistema);
+        funcionarios.cadastrar(new DadosFuncionario("Rosângela Ferreira Lopes", CpfSintetico.de("672318045"),
+                new Contato("rosangela.lopes@example.com", "98983019946"), "Auxiliar de secretaria", "Secretaria",
+                Perfil.SECRETARIA), sistema);
         LocalDate hoje = LocalDate.now(clock);
-        prestadores.cadastrar(new DadosPrestador("Transportes Sintéticos LTDA", "11222333000181", "Transporte escolar",
-                hoje.withDayOfYear(1), hoje.withDayOfYear(1).plusYears(1).minusDays(1),
+        prestadores.cadastrar(new DadosPrestador("Rota Kids Transporte Escolar LTDA", "11222333000181",
+                "Transporte escolar", hoje.withDayOfYear(1), hoje.withDayOfYear(1).plusYears(1).minusDays(1),
                 List.of("CNPJ", "Alvará SMTT", "Apólice de seguro"), new Contato("prestador@semeando.dev", null)),
                 sistema);
     }
@@ -194,41 +244,50 @@ class DadosSinteticosSeeder implements ApplicationRunner {
         return mapa;
     }
 
-    private Matricula matricularAteAtivar(String aluno, LocalDate nascimento, String cpf, String responsavel,
-            Turma turma) {
-        Matricula matricula = matricularSemPagar(aluno, nascimento, cpf, responsavel, turma);
+    private Matricula matricularAteAtivar(Familia familia, Turma turma) {
+        Matricula matricula = matricularSemPagar(familia, turma);
         pagamentos.registrarManual(matricula.primeiraParcelaId(), LocalDate.now(clock),
                 tabela.valorMensalPara(turma.serie()).comDesconto(), FormaPagamento.PIX, sistema);
         return matricula;
     }
 
-    private Matricula matricularSemPagar(String aluno, LocalDate nascimento, String cpf, String responsavel,
-            Turma turma) {
-        Matricula matricula = preMatricula.executar(comando(aluno, nascimento, cpf, responsavel, turma),
-                Ator.anonimo());
+    private Matricula matricularSemPagar(Familia familia, Turma turma) {
+        Matricula matricula = preMatricula.executar(comando(familia, turma, false), Ator.anonimo());
         DocumentoVinculo vinculo = analise.aprovar(matricula.id(), sistema);
         contratos.assinar(vinculo.id(), "127.0.0.1", sistema);
         gerenciar.registrarFarda(matricula.id(), new Farda("6", "6", "30"), sistema);
+        gerenciar.enviarDocumento(matricula.id(), TipoDocumento.DOCUMENTO_RESPONSAVEL, "rg-cpf-responsavel.txt",
+                "cópia do RG e CPF (demonstração)".getBytes(StandardCharsets.UTF_8), sistema);
         return gerenciar.enviarDocumento(matricula.id(), TipoDocumento.DOCUMENTO_ALUNO, "certidao.txt",
-                "documento sintético".getBytes(StandardCharsets.UTF_8), sistema);
+                "certidão de nascimento (demonstração)".getBytes(StandardCharsets.UTF_8), sistema);
     }
 
-    private PreMatriculaCommand comando(String aluno, LocalDate nascimento, String cpf, String responsavel,
-            Turma turma) {
+    private PreMatriculaCommand comando(Familia familia, Turma turma, boolean vindoDeEscolaParticular) {
+        Responsavel r = familia.responsavel();
         return new PreMatriculaCommand(
-                new DadosAluno(aluno, nascimento, new InformacoesMedicas("Nenhuma conhecida", "O+", null),
-                        "Hospital Sintético da Ilha",
-                        List.of(new PessoaAutorizada("Avó Sintética", "RG 0000000", "Avó", "98900000009"))),
-                new DadosResponsavel(responsavel, cpf, slug(responsavel) + "@exemplo.dev", "98900000002", "Mãe"),
-                turma.id(), false);
+                new DadosAluno(familia.aluno(), familia.nascimento(),
+                        new InformacoesMedicas("Nenhuma conhecida", "O+", null), familia.hospital(),
+                        List.of(familia.autorizado())),
+                new DadosResponsavel(r.nome(), r.cpf(), r.email(), r.telefone(), r.parentesco()),
+                turma.id(), vindoDeEscolaParticular);
     }
+
+    private record Responsavel(String nome, String cpf, String email, String telefone, String parentesco) {
+    }
+
+    private record Familia(String aluno, LocalDate nascimento, Responsavel responsavel, String hospital,
+            PessoaAutorizada autorizado) {
+    }
+
+    private static final List<String> CONTEUDOS = List.of("Leitura compartilhada: Chapeuzinho Vermelho",
+            "Adição com material dourado", "Vogais e encontros vocálicos", "Números até 100 e sequência numérica");
 
     private void registrarDiario(Turma turma, Matricula matricula, String cpfProfessora) {
         Usuario professora = usuarios.buscarPorEmail("professora@semeando.dev").orElseThrow();
         Ator ator = new Ator(professora.id(), professora.nome(), Perfil.PROFESSOR, Cpf.de(cpfProfessora));
         LocalDate hoje = LocalDate.now(clock);
         for (int dias = 4; dias >= 1; dias--) {
-            diario.registrar(turma.id(), hoje.minusDays(dias), "Aula sintética " + dias,
+            diario.registrar(turma.id(), hoje.minusDays(dias), CONTEUDOS.get(dias - 1),
                     List.of(new Presenca(matricula.alunoId(), dias != 2)), ator);
         }
     }
@@ -252,10 +311,5 @@ class DadosSinteticosSeeder implements ApplicationRunner {
                 new ItemMaterial("Livro: Aprender Juntos – Língua Portuguesa 1º ano", 1, TipoItem.LIVRO,
                         "https://www.exemplo.dev/livros/aprender-juntos-1")), sistema);
         listas.publicar(lista.id(), LocalDate.of(ano, 1, 1), LocalDate.of(ano, 12, 31), sistema);
-    }
-
-    private static String slug(String texto) {
-        String semAcentos = Normalizer.normalize(texto, Normalizer.Form.NFD).replaceAll("\\p{M}", "");
-        return semAcentos.toLowerCase().replaceAll("[^a-z]+", ".").replaceAll("^\\.|\\.$", "");
     }
 }

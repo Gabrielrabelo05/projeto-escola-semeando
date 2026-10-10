@@ -18,6 +18,7 @@ import { rotulo } from "@/presentation/lib/formatadores";
 import { useAuth } from "@/presentation/providers/AuthProvider";
 import { useGateways } from "@/presentation/providers/GatewayProvider";
 import { funcionarioSchema } from "@/presentation/schemas/cadastros";
+import { BotaoAcesso } from "./BotaoAcesso";
 import { FormularioDialog } from "./FormularioDialog";
 
 type Form = z.input<typeof funcionarioSchema>;
@@ -102,6 +103,18 @@ export function FuncionariosAba() {
                 celula: (f) => (
                   <StatusBadge status={f.ativo ? "ATIVO" : "INATIVO"} />
                 ),
+              },
+              {
+                titulo: "",
+                celula: (f) =>
+                  f.ativo && (
+                    <BotaoAcesso
+                      nome={f.nome}
+                      email={f.email}
+                      perfil={f.perfilAcesso}
+                      cpf={f.cpf}
+                    />
+                  ),
               },
             ]}
           />

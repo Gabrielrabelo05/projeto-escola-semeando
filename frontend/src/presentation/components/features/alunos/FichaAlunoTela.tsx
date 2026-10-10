@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Pencil } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,8 @@ import { useAcao } from "@/presentation/hooks/useAcao";
 import { useCarregar } from "@/presentation/hooks/useCarregar";
 import { data, moeda, rotulo } from "@/presentation/lib/formatadores";
 import { useGateways } from "@/presentation/providers/GatewayProvider";
+import { EditarAlunoDialog } from "./EditarAlunoDialog";
+import { ResponsavelCard } from "./ResponsavelCard";
 
 const ATIVIDADES: { valor: AtividadeExtracurricular; rotulo: string }[] = [
   { valor: "JIU_JITSU", rotulo: "Jiu Jitsu" },
@@ -34,6 +36,7 @@ export function FichaAlunoTela({ id }: { id: string }) {
     [id],
   );
   const [inativando, setInativando] = useState(false);
+  const [editando, setEditando] = useState(false);
   const atividades = useAcao(async (lista: AtividadeExtracurricular[]) => {
     await cadastro.definirAtividades(id, lista);
     await ficha.recarregar();
@@ -59,6 +62,9 @@ export function FichaAlunoTela({ id }: { id: string }) {
                 >
                   <ArrowLeft /> Voltar
                 </Button>
+                <Button variant="outline" onClick={() => setEditando(true)}>
+                  <Pencil /> Editar
+                </Button>
                 {a.status !== "INATIVO" && (
                   <Button
                     variant="destructive"
@@ -70,7 +76,13 @@ export function FichaAlunoTela({ id }: { id: string }) {
               </>
             }
           />
-          <div className="grid gap-4 md:grid-cols-3">
+          <EditarAlunoDialog
+            aluno={a}
+            aberto={editando}
+            aoFechar={() => setEditando(false)}
+            aoSalvar={ficha.recarregar}
+          />
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <Card size="sm">
               <CardHeader>
                 <CardTitle>Situação</CardTitle>
@@ -129,6 +141,7 @@ export function FichaAlunoTela({ id }: { id: string }) {
                 ))}
               </CardContent>
             </Card>
+            <ResponsavelCard aluno={a} aoAlterar={ficha.recarregar} />
           </div>
 
           <Tabs defaultValue="historico">

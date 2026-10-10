@@ -1,6 +1,8 @@
 package br.org.semeando.digital.application.cadastro;
 
 import br.org.semeando.digital.application.auditoria.Auditor;
+import br.org.semeando.digital.application.auth.EmissorConvite;
+import br.org.semeando.digital.application.auth.EmissorConvite.Convite;
 import br.org.semeando.digital.application.shared.Ator;
 import br.org.semeando.digital.application.shared.CasoDeUso;
 import br.org.semeando.digital.domain.aluno.Aluno;
@@ -10,9 +12,11 @@ import br.org.semeando.digital.domain.aluno.InformacoesMedicas;
 import br.org.semeando.digital.domain.aluno.PessoaAutorizada;
 import br.org.semeando.digital.domain.aluno.StatusAluno;
 import br.org.semeando.digital.domain.auditoria.AcaoAuditada;
+import br.org.semeando.digital.domain.pessoa.Contato;
 import br.org.semeando.digital.domain.pessoa.Responsavel;
 import br.org.semeando.digital.domain.pessoa.ResponsavelRepository;
 import br.org.semeando.digital.domain.shared.RecursoNaoEncontradoException;
+import br.org.semeando.digital.domain.usuario.Perfil;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Set;
@@ -24,11 +28,14 @@ public class AlunosUseCase {
 
     private final AlunoRepository alunos;
     private final ResponsavelRepository responsaveis;
+    private final EmissorConvite convites;
     private final Auditor auditor;
 
-    public AlunosUseCase(AlunoRepository alunos, ResponsavelRepository responsaveis, Auditor auditor) {
+    public AlunosUseCase(AlunoRepository alunos, ResponsavelRepository responsaveis, EmissorConvite convites,
+            Auditor auditor) {
         this.alunos = alunos;
         this.responsaveis = responsaveis;
+        this.convites = convites;
         this.auditor = auditor;
     }
 
@@ -58,11 +65,35 @@ public class AlunosUseCase {
         return alunos.salvar(aluno);
     }
 
+    /** Correção dos dados do responsável financeiro (nome, contato, parentesco). O CPF não muda. */
+    public Responsavel atualizarResponsavel(UUID alunoId, String nome, Contato contato, String parentesco,
+            Ator ator) {
+        Responsavel responsavel = responsavel(buscar(alunoId));
+        responsavel.atualizar(nome, contato, parentesco);
+        auditor.registrar(ator, AcaoAuditada.EDICAO, "Responsavel", responsavel.id(), "Dados do responsável");
+        return responsaveis.salvar(responsavel);
+    }
+
+    /** Link para o responsável criar (ou redefinir) a senha do portal. */
+    public Convite acessoDoResponsavel(UUID alunoId, Ator ator) {
+        Responsavel responsavel = responsavel(buscar(alunoId));
+        Convite convite = convites.convidar(responsavel.nome(), responsavel.contato().email(), Perfil.RESPONSAVEL,
+                responsavel.cpf());
+        auditor.registrar(ator, AcaoAuditada.EDICAO, "Usuario", convite.usuario().id(),
+                "Link de acesso do responsável " + convite.usuario().email());
+        return convite;
+    }
+
     public Aluno inativar(UUID id, Ator ator) {
         Aluno aluno = buscar(id);
         aluno.inativar();
         auditor.registrar(ator, AcaoAuditada.INATIVACAO, "Aluno", id, aluno.nome());
         return alunos.salvar(aluno);
+    }
+
+    private Responsavel responsavel(Aluno aluno) {
+        return responsaveis.buscarPorId(aluno.responsavelId())
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Responsável", aluno.responsavelId()));
     }
 
     private Aluno buscar(UUID id) {

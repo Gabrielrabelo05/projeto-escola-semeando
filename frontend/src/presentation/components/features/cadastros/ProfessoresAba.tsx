@@ -15,6 +15,7 @@ import { useAcao } from "@/presentation/hooks/useAcao";
 import { useCarregar } from "@/presentation/hooks/useCarregar";
 import { useGateways } from "@/presentation/providers/GatewayProvider";
 import { professorSchema } from "@/presentation/schemas/cadastros";
+import { BotaoAcesso } from "./BotaoAcesso";
 import { FormularioDialog } from "./FormularioDialog";
 
 type Form = z.input<typeof professorSchema>;
@@ -107,16 +108,24 @@ export function ProfessoresAba() {
                 titulo: "",
                 celula: (p) =>
                   p.ativo && (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={(ev) => {
-                        ev.stopPropagation();
-                        void inativar.executar(p.id);
-                      }}
-                    >
-                      Inativar
-                    </Button>
+                    <div className="flex justify-end gap-1">
+                      <BotaoAcesso
+                        nome={p.nome}
+                        email={p.email}
+                        perfil="PROFESSOR"
+                        cpf={p.cpf}
+                      />
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={(ev) => {
+                          ev.stopPropagation();
+                          void inativar.executar(p.id);
+                        }}
+                      >
+                        Inativar
+                      </Button>
+                    </div>
                   ),
               },
             ]}

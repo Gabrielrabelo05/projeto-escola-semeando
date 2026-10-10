@@ -18,7 +18,10 @@ function renderizar(entrar: Gateways["auth"]["entrar"]) {
     entrar,
     listarUsuarios: vi.fn(),
     criarUsuario: vi.fn(),
+    novoLinkAcesso: vi.fn(),
     inativarUsuario: vi.fn(),
+    consultarConvite: vi.fn(),
+    definirSenha: vi.fn(),
   };
   const gateways = { auth } as unknown as Gateways;
   return render(

@@ -1,5 +1,7 @@
 import type { CadastroGateway } from "@/domain/gateways";
+import type { ConviteAcesso } from "@/domain/models/auth";
 import type {
+  AlunoForm,
   Funcionario,
   FuncionarioForm,
   Prestador,
@@ -7,6 +9,7 @@ import type {
   Professor,
   ProfessorForm,
   RegistroAuditoria,
+  ResponsavelForm,
   ResultadoBusca,
   TurmaForm,
 } from "@/domain/models/cadastro";
@@ -33,6 +36,21 @@ export class HttpCadastroGateway implements CadastroGateway {
 
   inativarAluno(id: UUID): Promise<AlunoResumo> {
     return this.http.patch(`/alunos/${id}/inativar`);
+  }
+
+  atualizarAluno(id: UUID, dados: AlunoForm): Promise<AlunoDetalhe> {
+    return this.http.put(`/alunos/${id}`, dados);
+  }
+
+  atualizarResponsavel(
+    alunoId: UUID,
+    dados: ResponsavelForm,
+  ): Promise<AlunoDetalhe> {
+    return this.http.put(`/alunos/${alunoId}/responsavel`, dados);
+  }
+
+  acessoResponsavel(alunoId: UUID): Promise<ConviteAcesso> {
+    return this.http.post(`/alunos/${alunoId}/acesso-responsavel`);
   }
 
   definirAtividades(

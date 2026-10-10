@@ -36,6 +36,7 @@ public class AutenticacaoUseCase {
     public Sessao entrar(String email, String senha) {
         Usuario usuario = usuarios.buscarPorEmail(email == null ? "" : email.trim().toLowerCase())
                 .filter(Usuario::ativo)
+                .filter(Usuario::possuiSenha)
                 .filter(u -> codificador.confere(senha, u.senhaHash()))
                 .orElseThrow(() -> new DomainException("CREDENCIAIS_INVALIDAS", "E-mail ou senha inválidos"));
         return new Sessao(emissorToken.emitir(usuario), usuario);
@@ -45,11 +46,16 @@ public class AutenticacaoUseCase {
         return usuarios.listar();
     }
 
-    public Usuario criar(String nome, String email, String senha, Perfil perfil, String cpf, Ator ator) {
+    public static void validarSenha(String senha) {
         if (senha == null || senha.length() < TAMANHO_MINIMO_SENHA) {
             throw new DomainException("SENHA_FRACA", "A senha deve ter ao menos " + TAMANHO_MINIMO_SENHA
                     + " caracteres");
         }
+    }
+
+    /** Usuário com senha já definida (contas de demonstração do seed). Pela API, o acesso é por convite. */
+    public Usuario criar(String nome, String email, String senha, Perfil perfil, String cpf, Ator ator) {
+        validarSenha(senha);
         if (usuarios.buscarPorEmail(email.trim().toLowerCase()).isPresent()) {
             throw new DomainException("DUPLICADO", "E-mail já cadastrado");
         }
