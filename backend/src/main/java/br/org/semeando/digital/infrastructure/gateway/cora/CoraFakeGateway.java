@@ -18,8 +18,8 @@ public class CoraFakeGateway implements CoraGateway {
     @Override
     public Boleto emitirBoleto(SolicitacaoBoleto solicitacao) {
         String id = "fake-" + UUID.randomUUID();
-        LOG.info("[CORA-FAKE] boleto {} emitido: {} {} venc. {}", id, solicitacao.descricao(), solicitacao.valor(),
-                solicitacao.vencimento());
+        LOG.info("[CORA-FAKE] boleto {} emitido: {} {} (desconto {}) venc. {}", id, solicitacao.descricao(),
+                solicitacao.valor(), solicitacao.desconto(), solicitacao.vencimento());
         return new Boleto(id, linhaDigitavel(), "https://cora.fake/boletos/" + id);
     }
 

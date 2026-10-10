@@ -32,8 +32,8 @@ class MatriculaRepositoryAdapter implements MatriculaRepository {
     }
 
     @Override
-    public Optional<Matricula> buscarPorCobrancaTaxa(UUID cobrancaId) {
-        return jpa.findByCobrancaTaxaId(cobrancaId).map(MatriculaEntity::paraDominio);
+    public Optional<Matricula> buscarPorPrimeiraParcela(UUID cobrancaId) {
+        return jpa.findByPrimeiraParcelaId(cobrancaId).map(MatriculaEntity::paraDominio);
     }
 
     @Override

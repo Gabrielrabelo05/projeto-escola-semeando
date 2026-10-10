@@ -1,5 +1,6 @@
 package br.org.semeando.digital.domain.cobranca;
 
+import br.org.semeando.digital.domain.contrato.Mensalidade;
 import br.org.semeando.digital.domain.shared.Dinheiro;
 import br.org.semeando.digital.domain.shared.DomainException;
 import br.org.semeando.digital.domain.shared.MesReferencia;
@@ -14,28 +15,32 @@ public class Cobranca {
     private final TipoCobranca tipo;
     private final MesReferencia mesReferencia;
     private final Dinheiro valor;
+    private final Dinheiro valorComDesconto;
     private final LocalDate vencimento;
     private StatusCobranca status;
     private Boleto boleto;
     private Pagamento pagamento;
 
     public Cobranca(UUID id, UUID alunoId, TipoCobranca tipo, MesReferencia mesReferencia, Dinheiro valor,
-            LocalDate vencimento, StatusCobranca status, Boleto boleto, Pagamento pagamento) {
+            Dinheiro valorComDesconto, LocalDate vencimento, StatusCobranca status, Boleto boleto,
+            Pagamento pagamento) {
         this.id = Validacoes.obrigatorio(id, "id");
         this.alunoId = Validacoes.obrigatorio(alunoId, "aluno");
         this.tipo = Validacoes.obrigatorio(tipo, "tipo");
         this.mesReferencia = Validacoes.obrigatorio(mesReferencia, "mês de referência");
         this.valor = Validacoes.obrigatorio(valor, "valor");
+        this.valorComDesconto = valorComDesconto == null ? valor : valorComDesconto;
         this.vencimento = Validacoes.obrigatorio(vencimento, "vencimento");
         this.status = Validacoes.obrigatorio(status, "status");
         this.boleto = boleto;
         this.pagamento = pagamento;
     }
 
-    public static Cobranca emitir(UUID alunoId, TipoCobranca tipo, MesReferencia mes, Dinheiro valor,
+    /** {@code boleto} é nulo para cobranças pagas na secretaria (taxa de associado). */
+    public static Cobranca emitir(UUID alunoId, TipoCobranca tipo, MesReferencia mes, Mensalidade valores,
             LocalDate vencimento, Boleto boleto) {
-        return new Cobranca(UUID.randomUUID(), alunoId, tipo, mes, valor, vencimento, StatusCobranca.EMITIDA,
-                boleto, null);
+        return new Cobranca(UUID.randomUUID(), alunoId, tipo, mes, valores.integral(), valores.comDesconto(),
+                vencimento, StatusCobranca.EMITIDA, boleto, null);
     }
 
     /** RF-27 / RF-28: baixa do título. Pagamento em duplicidade é ignorado de forma idempotente. */
@@ -63,12 +68,17 @@ public class Cobranca {
         return status == StatusCobranca.EMITIDA && data.isAfter(vencimento);
     }
 
-    public Encargos encargosEm(LocalDate data) {
-        return vencidaEm(data) ? CalculadoraEncargos.calcular(valor, vencimento, data) : Encargos.nenhum();
+    public Encargos encargosEm(LocalDate data, IndiceCorrecaoMonetaria indice) {
+        return vencidaEm(data) && tipo.sujeitaAEncargos()
+                ? CalculadoraEncargos.calcular(valor, vencimento, data, indice) : Encargos.nenhum();
     }
 
-    public Dinheiro valorAtualizadoEm(LocalDate data) {
-        return valor.somar(encargosEm(data).total());
+    /** Valor a pagar na data: com desconto até o vencimento; depois, integral mais encargos. */
+    public Dinheiro valorDevidoEm(LocalDate data, IndiceCorrecaoMonetaria indice) {
+        if (!data.isAfter(vencimento)) {
+            return valorComDesconto;
+        }
+        return valor.somar(encargosEm(data, indice).total());
     }
 
     public UUID id() {
@@ -89,6 +99,10 @@ public class Cobranca {
 
     public Dinheiro valor() {
         return valor;
+    }
+
+    public Dinheiro valorComDesconto() {
+        return valorComDesconto;
     }
 
     public LocalDate vencimento() {

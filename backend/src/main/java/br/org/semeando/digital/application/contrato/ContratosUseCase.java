@@ -19,6 +19,8 @@ import br.org.semeando.digital.domain.pessoa.Responsavel;
 import br.org.semeando.digital.domain.pessoa.ResponsavelRepository;
 import br.org.semeando.digital.domain.shared.Dinheiro;
 import br.org.semeando.digital.domain.shared.RecursoNaoEncontradoException;
+import br.org.semeando.digital.domain.turma.Serie;
+import br.org.semeando.digital.domain.turma.TurmaRepository;
 import java.time.Clock;
 import java.util.Comparator;
 import java.util.List;
@@ -34,17 +36,19 @@ public class ContratosUseCase {
     private final MatriculaRepository matriculas;
     private final AlunoRepository alunos;
     private final ResponsavelRepository responsaveis;
+    private final TurmaRepository turmas;
     private final GeradorDocumentoVinculo gerador;
     private final Auditor auditor;
     private final Clock clock;
 
     public ContratosUseCase(DocumentoVinculoRepository vinculos, MatriculaRepository matriculas,
-            AlunoRepository alunos, ResponsavelRepository responsaveis, GeradorDocumentoVinculo gerador,
-            Auditor auditor, Clock clock) {
+            AlunoRepository alunos, ResponsavelRepository responsaveis, TurmaRepository turmas,
+            GeradorDocumentoVinculo gerador, Auditor auditor, Clock clock) {
         this.vinculos = vinculos;
         this.matriculas = matriculas;
         this.alunos = alunos;
         this.responsaveis = responsaveis;
+        this.turmas = turmas;
         this.gerador = gerador;
         this.auditor = auditor;
         this.clock = clock;
@@ -66,8 +70,8 @@ public class ContratosUseCase {
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Matrícula", matriculaId));
         Aluno aluno = aluno(matricula.alunoId());
         Responsavel responsavel = responsavel(aluno);
-        DocumentoVinculo novo = gerador.gerar(aluno, responsavel, matricula, valorParcela, numeroParcelas,
-                ator.nome(), clock.instant());
+        DocumentoVinculo novo = gerador.gerar(aluno, responsavel, matricula, serie(matricula), valorParcela,
+                numeroParcelas, ator.nome(), clock.instant());
         return vinculos.buscarVigentePorMatricula(matriculaId)
                 .map(atual -> substituir(atual, novo.conteudo(), ator))
                 .orElseGet(() -> {
@@ -83,7 +87,7 @@ public class ContratosUseCase {
         Matricula matricula = matriculas.buscarPorId(atual.matriculaId()).orElseThrow();
         Aluno aluno = aluno(atual.alunoId());
         DocumentoVinculo regenerado = gerador.gerarComTabelaOficial(aluno, responsavel(aluno), matricula,
-                ator.nome(), clock.instant());
+                serie(matricula), ator.nome(), clock.instant());
         return substituir(atual, regenerado.conteudo(), ator);
     }
 
@@ -135,6 +139,11 @@ public class ContratosUseCase {
         if (ator.cpf() == null || !aluno.cpfResponsavel().equals(ator.cpf())) {
             throw new AcessoNegadoException("Documento não pertence a um aluno sob sua responsabilidade");
         }
+    }
+
+    private Serie serie(Matricula matricula) {
+        return turmas.buscarPorId(matricula.turmaId())
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Turma", matricula.turmaId())).serie();
     }
 
     private Aluno aluno(UUID id) {

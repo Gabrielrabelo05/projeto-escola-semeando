@@ -12,6 +12,7 @@ import type {
 import type {
   AlunoDetalhe,
   AlunoResumo,
+  AtividadeExtracurricular,
   StatusAluno,
   Turma,
   UUID,
@@ -21,6 +22,10 @@ export interface CadastroGateway {
   alunos(status?: StatusAluno): Promise<AlunoResumo[]>;
   aluno(id: UUID): Promise<AlunoDetalhe>;
   inativarAluno(id: UUID): Promise<AlunoResumo>;
+  definirAtividades(
+    id: UUID,
+    atividades: AtividadeExtracurricular[],
+  ): Promise<AlunoDetalhe>;
 
   professores(incluirInativos?: boolean): Promise<Professor[]>;
   salvarProfessor(dados: ProfessorForm, id?: UUID): Promise<Professor>;

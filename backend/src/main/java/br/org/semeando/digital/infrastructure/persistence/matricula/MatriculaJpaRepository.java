@@ -11,7 +11,7 @@ import org.springframework.data.repository.query.Param;
 
 interface MatriculaJpaRepository extends JpaRepository<MatriculaEntity, UUID> {
 
-    Optional<MatriculaEntity> findByCobrancaTaxaId(UUID cobrancaId);
+    Optional<MatriculaEntity> findByPrimeiraParcelaId(UUID cobrancaId);
 
     List<MatriculaEntity> findByAlunoId(UUID alunoId);
 

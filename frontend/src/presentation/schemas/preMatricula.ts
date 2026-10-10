@@ -35,6 +35,8 @@ export const preMatriculaSchema = z.object({
     parentesco: obrigatorio("Parentesco"),
   }),
   turmaId: z.string().min(1, "Selecione a turma"),
+  /** Anexo didático: quem vem de outra escola particular entrega a declaração de adimplência. */
+  vindoDeEscolaParticular: z.boolean(),
 });
 
 export type PreMatriculaForm = z.infer<typeof preMatriculaSchema>;

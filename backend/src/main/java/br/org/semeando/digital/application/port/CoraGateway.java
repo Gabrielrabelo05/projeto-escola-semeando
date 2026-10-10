@@ -11,7 +11,8 @@ public interface CoraGateway {
 
     void cancelarBoleto(String idCora);
 
+    /** {@code desconto} vale para pagamento até o vencimento (zero quando não há desconto). */
     record SolicitacaoBoleto(String referenciaExterna, String nomePagador, String documentoPagador,
-            String emailPagador, Dinheiro valor, LocalDate vencimento, String descricao) {
+            String emailPagador, Dinheiro valor, Dinheiro desconto, LocalDate vencimento, String descricao) {
     }
 }

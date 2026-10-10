@@ -1,46 +1,38 @@
 package br.org.semeando.digital.domain.matricula;
 
-import static br.org.semeando.digital.domain.turma.NivelEnsino.EDUCACAO_INFANTIL;
-import static br.org.semeando.digital.domain.turma.NivelEnsino.ENSINO_FUNDAMENTAL;
-
-import br.org.semeando.digital.domain.turma.NivelEnsino;
 import java.util.Arrays;
-import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 
 /**
- * RN-05 / RF-06: documentos exigidos para matrícula. Cada nível de ensino possui um checklist de 7 documentos.
- * A validade (em dias) indica documentos que precisam ser reapresentados na renovação (RF-08).
+ * RN-05 / RF-06: documentos exigidos para matrícula, conforme o Anexo didático da escola (mesma lista para a
+ * Educação Infantil e o Ensino Fundamental). A declaração de adimplência só é exigida de alunos vindos de outra
+ * instituição particular. A validade (em dias) indica documentos a reapresentar na renovação (RF-08).
  */
 public enum TipoDocumento {
-    CERTIDAO_NASCIMENTO("Certidão de nascimento", null, EDUCACAO_INFANTIL, ENSINO_FUNDAMENTAL),
-    DOCUMENTO_RESPONSAVEL("RG e CPF do responsável", null, EDUCACAO_INFANTIL, ENSINO_FUNDAMENTAL),
-    COMPROVANTE_RESIDENCIA("Comprovante de residência", 90, EDUCACAO_INFANTIL, ENSINO_FUNDAMENTAL),
-    CARTAO_VACINACAO("Cartão de vacinação atualizado", 365, EDUCACAO_INFANTIL, ENSINO_FUNDAMENTAL),
-    FOTO_3X4("Foto 3x4 do aluno", 365, EDUCACAO_INFANTIL, ENSINO_FUNDAMENTAL),
-    CARTAO_SUS("Cartão do SUS", null, EDUCACAO_INFANTIL),
-    LAUDO_MEDICO("Declaração de saúde / laudo médico", 365, EDUCACAO_INFANTIL),
-    DECLARACAO_TRANSFERENCIA("Declaração de transferência", null, ENSINO_FUNDAMENTAL),
-    HISTORICO_ESCOLAR("Histórico escolar", null, ENSINO_FUNDAMENTAL);
+    DOCUMENTO_RESPONSAVEL("Cópia da identidade e CPF dos pais ou responsáveis", null, false),
+    DOCUMENTO_ALUNO("Cópia da certidão de nascimento ou RG e CPF da criança", null, false),
+    CARTEIRA_VACINACAO("Cópia da carteira de vacinação", 365, false),
+    COMPROVANTE_RESIDENCIA("Comprovante de residência", 90, false),
+    DECLARACAO_ADIMPLENCIA("Declaração de adimplência (alunos de outras instituições particulares)", null, true),
+    FOTOS_3X4("2 fotos 3x4", 365, false),
+    DOCUMENTO_AUTORIZADOS("Cópia do documento de identificação das pessoas autorizadas a buscar a criança", null,
+            false);
 
     private final String descricao;
     private final Integer validadeDias;
-    private final Set<NivelEnsino> niveis;
+    private final boolean somenteVindoDeEscolaParticular;
 
-    TipoDocumento(String descricao, Integer validadeDias, NivelEnsino... niveis) {
+    TipoDocumento(String descricao, Integer validadeDias, boolean somenteVindoDeEscolaParticular) {
         this.descricao = descricao;
         this.validadeDias = validadeDias;
-        this.niveis = EnumSet.copyOf(Arrays.asList(niveis));
+        this.somenteVindoDeEscolaParticular = somenteVindoDeEscolaParticular;
     }
 
-    public static List<TipoDocumento> exigidosPara(NivelEnsino nivel) {
-        return Arrays.stream(values()).filter(tipo -> tipo.niveis.contains(nivel)).toList();
-    }
-
-    public boolean exigidoPara(NivelEnsino nivel) {
-        return niveis.contains(nivel);
+    public static List<TipoDocumento> exigidos(boolean vindoDeEscolaParticular) {
+        return Arrays.stream(values())
+                .filter(tipo -> vindoDeEscolaParticular || !tipo.somenteVindoDeEscolaParticular)
+                .toList();
     }
 
     public String descricao() {

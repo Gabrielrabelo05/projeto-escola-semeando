@@ -33,8 +33,9 @@ public final class CobrancaDtos {
     }
 
     public record CobrancaResponse(UUID id, AlunoResumo aluno, String tipo, String mesReferencia, BigDecimal valor,
-            LocalDate vencimento, String status, boolean vencida, String idBoletoCora, String linhaDigitavel,
-            String urlBoleto, LocalDate pagoEm, BigDecimal valorPago, String formaPagamento, BigDecimal valorAtualizado) {
+            BigDecimal valorComDesconto, LocalDate vencimento, String status, boolean vencida, String idBoletoCora,
+            String linhaDigitavel, String urlBoleto, LocalDate pagoEm, BigDecimal valorPago, String formaPagamento,
+            BigDecimal valorDevido) {
 
         public static CobrancaResponse de(CobrancaComAluno item, Clock clock) {
             Cobranca c = item.cobranca();
@@ -42,23 +43,25 @@ public final class CobrancaDtos {
             var boleto = c.boleto();
             var pagamento = c.pagamento();
             return new CobrancaResponse(c.id(), AlunoResumo.de(item.aluno()), c.tipo().name(),
-                    c.mesReferencia().toString(), c.valor().valor(), c.vencimento(), c.status().name(),
+                    c.mesReferencia().toString(), c.valor().valor(), c.valorComDesconto().valor(), c.vencimento(),
+                    c.status().name(),
                     c.vencidaEm(hoje), boleto == null ? null : boleto.idCora(),
                     boleto == null ? null : boleto.linhaDigitavel(), boleto == null ? null : boleto.url(),
                     pagamento == null ? null : pagamento.pagoEm(),
                     pagamento == null ? null : pagamento.valorPago().valor(),
-                    pagamento == null ? null : pagamento.forma().name(), c.valorAtualizadoEm(hoje).valor());
+                    pagamento == null ? null : pagamento.forma().name(), item.valorDevido().valor());
         }
     }
 
     public record InadimplenteResponse(UUID cobrancaId, AlunoResumo aluno, String mesReferencia, LocalDate vencimento,
-            long diasAtraso, BigDecimal valorOriginal, BigDecimal multa, BigDecimal juros, BigDecimal valorAtualizado) {
+            long diasAtraso, BigDecimal valorOriginal, BigDecimal multa, BigDecimal juros, BigDecimal correcao,
+            BigDecimal valorAtualizado) {
 
         public static InadimplenteResponse de(Inadimplente i) {
             return new InadimplenteResponse(i.cobranca().id(), AlunoResumo.de(i.aluno()),
                     i.cobranca().mesReferencia().toString(), i.cobranca().vencimento(), i.encargos().diasAtraso(),
                     i.cobranca().valor().valor(), i.encargos().multa().valor(), i.encargos().juros().valor(),
-                    i.valorAtualizado().valor());
+                    i.encargos().correcao().valor(), i.valorAtualizado().valor());
         }
     }
 

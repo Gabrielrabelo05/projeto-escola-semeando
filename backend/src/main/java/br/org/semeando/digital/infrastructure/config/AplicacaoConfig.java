@@ -10,7 +10,9 @@ import br.org.semeando.digital.application.shared.Notificador;
 import br.org.semeando.digital.domain.aluno.AlunoRepository;
 import br.org.semeando.digital.domain.auditoria.AuditoriaRepository;
 import br.org.semeando.digital.domain.cobranca.CobrancaRepository;
+import br.org.semeando.digital.domain.cobranca.IndiceCorrecaoMonetaria;
 import br.org.semeando.digital.domain.contrato.GeradorDocumentoVinculo;
+import br.org.semeando.digital.domain.contrato.Mensalidade;
 import br.org.semeando.digital.domain.contrato.TabelaValores;
 import br.org.semeando.digital.domain.matricula.MatriculaRepository;
 import br.org.semeando.digital.domain.notificacao.NotificacaoInternaRepository;
@@ -21,6 +23,7 @@ import br.org.semeando.digital.domain.shared.IdentidadeInstitucional;
 import br.org.semeando.digital.domain.turma.TurmaRepository;
 import br.org.semeando.digital.infrastructure.gateway.cora.CoraFakeGateway;
 import br.org.semeando.digital.infrastructure.gateway.cora.CoraHttpGateway;
+import br.org.semeando.digital.infrastructure.gateway.inpc.InpcIbgeIndice;
 import java.time.Clock;
 import java.time.ZoneId;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -45,9 +48,23 @@ public class AplicacaoConfig {
     TabelaValores tabelaValores(SemeandoProperties props) {
         IdentidadeInstitucional.validar(props.instituicao().nome(), props.instituicao().cnpj());
         var v = props.valores();
-        return new TabelaValores(Dinheiro.de(v.mensalidadeFundamental()), v.parcelasFundamental(),
-                Dinheiro.de(v.taxaAssociadoInfantil()), v.parcelasAssociado(), Dinheiro.de(v.taxaMatricula()),
-                v.diaVencimento());
+        return new TabelaValores(mensalidade(v.primeiroAno()), mensalidade(v.segundoAoQuintoAno()),
+                v.parcelasFundamental(), Dinheiro.de(v.taxaAssociadoInfantil()), v.parcelasAssociado(),
+                Dinheiro.de(v.atividadeExtracurricular()), v.diaVencimento());
+    }
+
+    private static Mensalidade mensalidade(SemeandoProperties.Parcela parcela) {
+        return new Mensalidade(Dinheiro.de(parcela.integral()), Dinheiro.de(parcela.comDesconto()));
+    }
+
+    /** Correção monetária pelo INPC (cláusula de encargos do contrato) a partir da API pública do IBGE. */
+    @Bean
+    IndiceCorrecaoMonetaria indiceCorrecaoMonetaria(SemeandoProperties props, Clock clock) {
+        var inpc = props.inpc();
+        if (inpc == null || !"ibge".equalsIgnoreCase(inpc.modo())) {
+            return IndiceCorrecaoMonetaria.NENHUM;
+        }
+        return new InpcIbgeIndice(RestClient.builder().baseUrl(inpc.url()).build(), clock);
     }
 
     @Bean

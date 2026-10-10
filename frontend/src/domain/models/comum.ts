@@ -106,7 +106,11 @@ export interface AlunoDetalhe {
   autorizados: Autorizado[];
   fotoUrl: string | null;
   responsavel: Responsavel | null;
+  atividades: AtividadeExtracurricular[];
 }
+
+/** Cobradas à parte (tabela oficial: R$ 50,00 por atividade). */
+export type AtividadeExtracurricular = "JIU_JITSU" | "BALLET";
 
 export interface ArquivoBaixado {
   nome: string;

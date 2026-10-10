@@ -10,7 +10,7 @@ public interface MatriculaRepository {
 
     Optional<Matricula> buscarPorId(UUID id);
 
-    Optional<Matricula> buscarPorCobrancaTaxa(UUID cobrancaId);
+    Optional<Matricula> buscarPorPrimeiraParcela(UUID cobrancaId);
 
     List<Matricula> listarPorAluno(UUID alunoId);
 

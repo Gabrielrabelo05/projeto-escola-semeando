@@ -1,6 +1,7 @@
 package br.org.semeando.digital.infrastructure.seed;
 
 import br.org.semeando.digital.application.auth.AutenticacaoUseCase;
+import br.org.semeando.digital.application.cadastro.AlunosUseCase;
 import br.org.semeando.digital.application.cadastro.FuncionariosUseCase;
 import br.org.semeando.digital.application.cadastro.FuncionariosUseCase.DadosFuncionario;
 import br.org.semeando.digital.application.cadastro.PrestadoresUseCase;
@@ -22,10 +23,12 @@ import br.org.semeando.digital.application.obrigacao.ObrigacoesUseCase;
 import br.org.semeando.digital.application.pedagogico.DiarioClasseUseCase;
 import br.org.semeando.digital.application.pedagogico.PlanejamentoCalendarioUseCase;
 import br.org.semeando.digital.application.shared.Ator;
+import br.org.semeando.digital.domain.aluno.AtividadeExtracurricular;
 import br.org.semeando.digital.domain.aluno.InformacoesMedicas;
 import br.org.semeando.digital.domain.aluno.PessoaAutorizada;
 import br.org.semeando.digital.domain.cobranca.FormaPagamento;
 import br.org.semeando.digital.domain.contrato.DocumentoVinculo;
+import br.org.semeando.digital.domain.contrato.TabelaValores;
 import br.org.semeando.digital.domain.material.ItemMaterial;
 import br.org.semeando.digital.domain.material.TipoItem;
 import br.org.semeando.digital.domain.matricula.Farda;
@@ -36,7 +39,6 @@ import br.org.semeando.digital.domain.pedagogico.TipoEvento;
 import br.org.semeando.digital.domain.pessoa.Contato;
 import br.org.semeando.digital.domain.pessoa.Professor;
 import br.org.semeando.digital.domain.shared.Cpf;
-import br.org.semeando.digital.domain.shared.Dinheiro;
 import br.org.semeando.digital.domain.shared.MesReferencia;
 import br.org.semeando.digital.domain.turma.Serie;
 import br.org.semeando.digital.domain.turma.Turma;
@@ -52,6 +54,7 @@ import java.time.YearMonth;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
@@ -69,8 +72,10 @@ class DadosSinteticosSeeder implements ApplicationRunner {
     private static final Logger LOG = LoggerFactory.getLogger(DadosSinteticosSeeder.class);
 
     private final SemeandoProperties props;
+    private final TabelaValores tabela;
     private final UsuarioRepository usuarios;
     private final AutenticacaoUseCase autenticacao;
+    private final AlunosUseCase alunos;
     private final ProfessoresUseCase professores;
     private final FuncionariosUseCase funcionarios;
     private final PrestadoresUseCase prestadores;
@@ -88,16 +93,19 @@ class DadosSinteticosSeeder implements ApplicationRunner {
     private final Clock clock;
     private final Ator sistema = Ator.sistema();
 
-    DadosSinteticosSeeder(SemeandoProperties props, UsuarioRepository usuarios, AutenticacaoUseCase autenticacao,
-            ProfessoresUseCase professores, FuncionariosUseCase funcionarios, PrestadoresUseCase prestadores,
+    DadosSinteticosSeeder(SemeandoProperties props, TabelaValores tabela, UsuarioRepository usuarios,
+            AutenticacaoUseCase autenticacao, AlunosUseCase alunos, ProfessoresUseCase professores,
+            FuncionariosUseCase funcionarios, PrestadoresUseCase prestadores,
             TurmasUseCase turmas, SolicitarPreMatriculaUseCase preMatricula, AnalisarMatriculaUseCase analise,
             GerenciarMatriculaUseCase gerenciar, ContratosUseCase contratos, ConfirmarPagamentoUseCase pagamentos,
             GerarCobrancasMensaisUseCase cobrancas, ObrigacoesUseCase obrigacoes,
             PlanejamentoCalendarioUseCase calendario, ListaMateriaisUseCase listas, DiarioClasseUseCase diario,
             Clock clock) {
         this.props = props;
+        this.tabela = tabela;
         this.usuarios = usuarios;
         this.autenticacao = autenticacao;
+        this.alunos = alunos;
         this.professores = professores;
         this.funcionarios = funcionarios;
         this.prestadores = prestadores;
@@ -138,6 +146,7 @@ class DadosSinteticosSeeder implements ApplicationRunner {
                 "Maria Responsável Sintética", turmasDoAno.get(Serie.MATERNAL_II));
         preMatricula.executar(comando("Pedro Aguardando", LocalDate.of(ano - 8, 1, 20), CpfSintetico.de("300000003"),
                 "João Responsável Sintético", turmasDoAno.get(Serie.TERCEIRO_ANO)), Ator.anonimo());
+        alunos.definirAtividades(fundamental.alunoId(), Set.of(AtividadeExtracurricular.JIU_JITSU), sistema);
 
         cobrancas.executar(new MesReferencia(YearMonth.now(clock)), sistema);
         registrarDiario(turmasDoAno.get(Serie.PRIMEIRO_ANO), fundamental, cpfProfessora);
@@ -188,8 +197,8 @@ class DadosSinteticosSeeder implements ApplicationRunner {
     private Matricula matricularAteAtivar(String aluno, LocalDate nascimento, String cpf, String responsavel,
             Turma turma) {
         Matricula matricula = matricularSemPagar(aluno, nascimento, cpf, responsavel, turma);
-        pagamentos.registrarManual(matricula.cobrancaTaxaId(), LocalDate.now(clock),
-                Dinheiro.de(props.valores().taxaMatricula()), FormaPagamento.PIX, sistema);
+        pagamentos.registrarManual(matricula.primeiraParcelaId(), LocalDate.now(clock),
+                tabela.valorMensalPara(turma.serie()).comDesconto(), FormaPagamento.PIX, sistema);
         return matricula;
     }
 
@@ -200,7 +209,7 @@ class DadosSinteticosSeeder implements ApplicationRunner {
         DocumentoVinculo vinculo = analise.aprovar(matricula.id(), sistema);
         contratos.assinar(vinculo.id(), "127.0.0.1", sistema);
         gerenciar.registrarFarda(matricula.id(), new Farda("6", "6", "30"), sistema);
-        return gerenciar.enviarDocumento(matricula.id(), TipoDocumento.CERTIDAO_NASCIMENTO, "certidao.txt",
+        return gerenciar.enviarDocumento(matricula.id(), TipoDocumento.DOCUMENTO_ALUNO, "certidao.txt",
                 "documento sintético".getBytes(StandardCharsets.UTF_8), sistema);
     }
 
@@ -211,7 +220,7 @@ class DadosSinteticosSeeder implements ApplicationRunner {
                         "Hospital Sintético da Ilha",
                         List.of(new PessoaAutorizada("Avó Sintética", "RG 0000000", "Avó", "98900000009"))),
                 new DadosResponsavel(responsavel, cpf, slug(responsavel) + "@exemplo.dev", "98900000002", "Mãe"),
-                turma.id());
+                turma.id(), false);
     }
 
     private void registrarDiario(Turma turma, Matricula matricula, String cpfProfessora) {

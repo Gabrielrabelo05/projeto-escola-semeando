@@ -126,10 +126,10 @@ métodos de gateway obtidos por `useGateways()`, e só a infraestrutura conhece 
 | Regra | Implementação |
 |---|---|
 | RN-01 | `TipoVinculo.para(nivel)` + hierarquia selada + `validarCompatibilidade` |
-| RN-02 | `TabelaValores` (R$ 375,00 × 11 = R$ 4.125,00); configuração divergente impede a aplicação de subir |
-| RN-03 | `CalculadoraEncargos` – multa 2% + juros 0,033%/dia |
+| RN-02 | `TabelaValores` com a tabela do Anexo didático: 1º ano R$ 310,00 (R$ 279,00 até o vencimento) e 2º ao 5º ano R$ 375,00 (R$ 337,00), em 11 parcelas; configuração divergente impede a aplicação de subir. Taxa de associado R$ 125,00 (sem boleto) e Jiu Jitsu / Ballet R$ 50,00 |
+| RN-03 | `CalculadoraEncargos` – multa 2% + juros 0,033%/dia; sem acréscimos até o 5º dia útil do mês do vencimento; correção pelo INPC/IBGE (`InpcIbgeIndice`) com 30 dias ou mais de atraso (cláusula do contrato) |
 | RN-04 | `MatriculaContexto.garantirMatriculaUnica` + transferência gera histórico |
-| RN-05 | `TipoDocumento.exigidosPara(nivel)` – 7 documentos por nível |
+| RN-05 | `TipoDocumento.exigidos(...)` – checklist do Anexo didático (declaração de adimplência só para quem vem de escola particular) |
 | RN-06 | `ContratoPrestacaoServicos` exige hospital e autorizados (também validado no front) |
 | RN-07 | `PoliticaEmissaoBoleto` |
 | RN-08 | `DadosSinteticosSeeder` + CPFs sintéticos nos testes |
@@ -139,7 +139,7 @@ métodos de gateway obtidos por `useGateways()`, e só a infraestrutura conhece 
 Requisitos não funcionais atendidos: RBAC por perfil (RF-35), log de auditoria somente inserção, com
 trigger no PostgreSQL que bloqueia UPDATE/DELETE (RNF-06), criptografia AES-256-GCM das informações de
 saúde em repouso (RNF-01), registros nunca excluídos (RF-37), interface responsiva (RNF-04),
-cobertura de testes do backend de 70,4% (RNF-05, relatório em `backend/target/site/jacoco`).
+cobertura de testes do backend de 71,5% (RNF-05, relatório em `backend/target/site/jacoco`).
 
 ---
 
@@ -162,12 +162,20 @@ Conventional Commits obrigatório (`feat(matricula): …`). Hooks do Husky:
 
 ## Premissas e pendências
 
-Premissas adotadas onde o levantamento não define valores:
+Valores e documentos seguem o **Anexo didático** da escola (tabela de 2026), o contrato e o short paper.
+Premissas adotadas onde esses documentos não definem:
 
-* Taxa de associado (R$ 280,00) e taxa de matrícula (R$ 150,00) são **valores de exemplo**, configuráveis
-  em `application.yml` (`semeando.valores`).
-* O checklist de 7 documentos por nível (`TipoDocumento`) e as validades usadas na renovação são uma proposta.
+* Não existe taxa de matrícula: pelo contrato, o pagamento da **primeira parcela** confirma a matrícula
+  (sinal). No Fundamental ela é a 1ª mensalidade (boleto Cora); no Infantil, a 1ª taxa de associado.
+* A taxa de associado (R$ 125,00) é tratada como mensal, em 11 parcelas, paga na secretaria e sem
+  multa/juros (os encargos estão no contrato do Fundamental, não na ficha de sócio).
+* O desconto de 10% usa os valores do anexo (R$ 337,00, e não R$ 337,50, no 2º ao 5º ano).
+* O "5º dia útil" considera segunda a sexta, sem feriados. A correção pelo INPC usa os meses cheios de
+  atraso e nunca reduz o valor.
+* As validades usadas na renovação (comprovante 90 dias; vacinação e fotos 1 ano) são uma proposta.
 * Bimestres do Sistema Presença: fev–mar, abr–mai, ago–set, out–nov.
+* O modelo de contrato da escola diz "R$ 3.720,00 em 11 parcelas de R$ 310,00", mas 11 × 310 = 3.410
+  (3.720 seria 12 parcelas). O sistema usa 11 parcelas, como o levantamento; confirmar com a escola.
 
 Ainda não implementado:
 
@@ -177,3 +185,4 @@ Ainda não implementado:
 * Integração Cora em produção: o `CoraHttpGateway` existe, mas falta o certificado mTLS e a validação do
   payload contra a API real. Por padrão roda o `CoraFakeGateway`.
 * Testes de carga (RNF-02) e monitoramento de uptime (RNF-03).
+* Categorias de sócio (Fundador, Efetivo, Mantenedor CI/CII/CIII) da ficha de associado.

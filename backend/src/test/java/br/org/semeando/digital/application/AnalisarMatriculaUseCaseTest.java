@@ -24,6 +24,7 @@ import br.org.semeando.digital.domain.cobranca.TipoCobranca;
 import br.org.semeando.digital.domain.contrato.ContratoPrestacaoServicos;
 import br.org.semeando.digital.domain.contrato.DocumentoVinculoRepository;
 import br.org.semeando.digital.domain.contrato.GeradorDocumentoVinculo;
+import br.org.semeando.digital.domain.contrato.Mensalidade;
 import br.org.semeando.digital.domain.matricula.Matricula;
 import br.org.semeando.digital.domain.matricula.MatriculaRepository;
 import br.org.semeando.digital.domain.matricula.StatusMatricula;
@@ -81,7 +82,7 @@ class AnalisarMatriculaUseCaseTest {
         responsavel = Fixtures.responsavel();
         aluno = Fixtures.aluno(responsavel, true);
         turma = Turma.nova("1º ano A", Serie.PRIMEIRO_ANO, 2026, 20, null);
-        matricula = Matricula.solicitar(aluno.id(), turma.id(), turma.nivel(), 2026, Fixtures.HOJE);
+        matricula = Matricula.solicitar(aluno.id(), turma.id(), turma.nivel(), 2026, false, Fixtures.HOJE);
 
         when(matriculas.buscarPorId(matricula.id())).thenReturn(Optional.of(matricula));
         lenient().when(turmas.buscarPorId(turma.id())).thenReturn(Optional.of(turma));
@@ -90,25 +91,28 @@ class AnalisarMatriculaUseCaseTest {
     }
 
     @Test
-    void aprovarGeraContratoETaxaDeMatricula() {
+    void aprovarGeraContratoDaSerieEPrimeiraParcelaComDesconto() {
         when(matriculas.listarPorAluno(aluno.id())).thenReturn(List.of(matricula));
-        Cobranca taxa = Cobranca.emitir(aluno.id(), TipoCobranca.TAXA_MATRICULA, MesReferencia.de("2026-03"),
-                Dinheiro.de("150"), Fixtures.HOJE.plusDays(5), null);
-        when(emissor.emitir(eq(aluno), eq(responsavel), eq(TipoCobranca.TAXA_MATRICULA), any(), any(), any()))
-                .thenReturn(taxa);
+        Mensalidade primeiroAno = Mensalidade.de("310.00", "279.00");
+        Cobranca primeiraParcela = Cobranca.emitir(aluno.id(), TipoCobranca.MENSALIDADE, MesReferencia.de("2026-03"),
+                primeiroAno, Fixtures.HOJE.plusDays(5), null);
+        when(emissor.emitir(aluno, responsavel, TipoCobranca.MENSALIDADE, MesReferencia.de("2026-03"), primeiroAno,
+                Fixtures.HOJE.plusDays(5))).thenReturn(primeiraParcela);
 
         var vinculo = useCase.aprovar(matricula.id(), secretaria);
 
-        assertThat(vinculo).isInstanceOf(ContratoPrestacaoServicos.class);
+        assertThat(vinculo).isInstanceOfSatisfying(ContratoPrestacaoServicos.class,
+                contrato -> assertThat(contrato.valorParcela()).isEqualTo(Dinheiro.de("310.00")));
         assertThat(matricula.status()).isEqualTo(StatusMatricula.APROVADA);
-        assertThat(matricula.cobrancaTaxaId()).isEqualTo(taxa.id());
+        assertThat(matricula.primeiraParcelaId()).isEqualTo(primeiraParcela.id());
         verify(vinculos).salvar(vinculo);
         verify(notificador).responsavel(eq(responsavel), eq("Matrícula aprovada"), anyString());
     }
 
     @Test
     void rn04NaoAprovaQuandoAlunoJaPossuiMatriculaEmVigor() {
-        Matricula outra = Matricula.solicitar(aluno.id(), UUID.randomUUID(), turma.nivel(), 2026, Fixtures.HOJE);
+        Matricula outra = Matricula.solicitar(aluno.id(), UUID.randomUUID(), turma.nivel(), 2026, false,
+                Fixtures.HOJE);
         outra.aprovar();
         when(matriculas.listarPorAluno(aluno.id())).thenReturn(List.of(matricula, outra));
 

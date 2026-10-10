@@ -11,7 +11,6 @@ import br.org.semeando.digital.domain.cobranca.Cobranca;
 import br.org.semeando.digital.domain.cobranca.CobrancaRepository;
 import br.org.semeando.digital.domain.cobranca.FormaPagamento;
 import br.org.semeando.digital.domain.cobranca.Pagamento;
-import br.org.semeando.digital.domain.cobranca.TipoCobranca;
 import br.org.semeando.digital.domain.matricula.MatriculaRepository;
 import br.org.semeando.digital.domain.pessoa.ResponsavelRepository;
 import br.org.semeando.digital.domain.shared.Dinheiro;
@@ -22,7 +21,7 @@ import java.util.UUID;
 
 /**
  * RF-27 (pagamento manual), RF-28 (baixa automática via webhook do Cora) e RF-30 (recibo).
- * Quando a taxa de matrícula é paga, a matrícula e o aluno passam a ATIVO (passo 13 do fluxo).
+ * Quando a primeira parcela é paga, a matrícula e o aluno passam a ATIVO (passo 13 do fluxo).
  */
 @CasoDeUso
 public class ConfirmarPagamentoUseCase {
@@ -67,15 +66,13 @@ public class ConfirmarPagamentoUseCase {
                 pagamento.forma() + " " + pagamento.valorPago());
         Aluno aluno = alunos.buscarPorId(cobranca.alunoId())
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Aluno", cobranca.alunoId()));
-        if (cobranca.tipo() == TipoCobranca.TAXA_MATRICULA) {
-            ativarMatricula(cobranca, aluno);
-        }
+        ativarMatriculaSePrimeiraParcela(cobranca, aluno);
         enviarRecibo(cobranca, aluno);
         return cobranca;
     }
 
-    private void ativarMatricula(Cobranca cobranca, Aluno aluno) {
-        matriculas.buscarPorCobrancaTaxa(cobranca.id()).ifPresent(matricula -> {
+    private void ativarMatriculaSePrimeiraParcela(Cobranca cobranca, Aluno aluno) {
+        matriculas.buscarPorPrimeiraParcela(cobranca.id()).ifPresent(matricula -> {
             matricula.ativar();
             matriculas.salvar(matricula);
             aluno.ativar();
@@ -96,7 +93,8 @@ public class ConfirmarPagamentoUseCase {
                 Recebemos de %s (CPF %s) o valor de %s referente a %s %s do(a) aluno(a) %s.
                 Pagamento em %s via %s.
                 """.formatted(IdentidadeInstitucional.cabecalho(), responsavel.nome(), responsavel.cpf(),
-                        cobranca.pagamento().valorPago(), cobranca.tipo(), cobranca.mesReferencia(), aluno.nome(),
+                        cobranca.pagamento().valorPago(), cobranca.tipo().descricao(), cobranca.mesReferencia(),
+                        aluno.nome(),
                         cobranca.pagamento().pagoEm(), cobranca.pagamento().forma())));
     }
 }

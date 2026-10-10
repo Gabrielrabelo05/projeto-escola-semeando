@@ -55,7 +55,7 @@ export function PagamentoManualDialog({
     resolver: zodResolver(schema),
     values: {
       pagoEm: hojeISO(),
-      valorPago: String(cobranca?.valorAtualizado ?? ""),
+      valorPago: String(cobranca?.valorDevido ?? ""),
       forma: "PIX",
     },
   });

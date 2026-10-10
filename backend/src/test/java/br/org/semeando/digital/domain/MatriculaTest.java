@@ -17,27 +17,28 @@ import org.junit.jupiter.api.Test;
 class MatriculaTest {
 
     private final Matricula matricula = Matricula.solicitar(UUID.randomUUID(), UUID.randomUUID(),
-            NivelEnsino.ENSINO_FUNDAMENTAL, 2026, Fixtures.HOJE);
+            NivelEnsino.ENSINO_FUNDAMENTAL, 2026, false, Fixtures.HOJE);
 
     @Test
-    void rn05ChecklistTemSeteDocumentosDiferentesPorNivel() {
-        assertThat(TipoDocumento.exigidosPara(NivelEnsino.EDUCACAO_INFANTIL)).hasSize(7)
-                .contains(TipoDocumento.CARTAO_SUS).doesNotContain(TipoDocumento.HISTORICO_ESCOLAR);
-        assertThat(TipoDocumento.exigidosPara(NivelEnsino.ENSINO_FUNDAMENTAL)).hasSize(7)
-                .contains(TipoDocumento.HISTORICO_ESCOLAR).doesNotContain(TipoDocumento.CARTAO_SUS);
-        assertThat(matricula.pendencias(Fixtures.HOJE)).hasSize(7);
+    void rn05ChecklistDoAnexoDidaticoComDeclaracaoDeAdimplenciaSoParaQuemVemDeEscolaParticular() {
+        assertThat(TipoDocumento.exigidos(true)).hasSize(7).contains(TipoDocumento.DECLARACAO_ADIMPLENCIA,
+                TipoDocumento.DOCUMENTO_AUTORIZADOS, TipoDocumento.FOTOS_3X4);
+        assertThat(TipoDocumento.exigidos(false)).hasSize(6).doesNotContain(TipoDocumento.DECLARACAO_ADIMPLENCIA);
+        assertThat(matricula.pendencias(Fixtures.HOJE)).hasSize(6);
+        assertThat(Matricula.solicitar(UUID.randomUUID(), UUID.randomUUID(), NivelEnsino.EDUCACAO_INFANTIL, 2026, true,
+                Fixtures.HOJE).pendencias(Fixtures.HOJE)).contains(TipoDocumento.DECLARACAO_ADIMPLENCIA);
     }
 
     @Test
-    void rn05DocumentoForaDoChecklistDoNivelEhRejeitado() {
-        assertThatThrownBy(() -> matricula.registrarEntregaDocumento(TipoDocumento.CARTAO_SUS, "a.pdf", Fixtures.HOJE))
-                .hasFieldOrPropertyWithValue("codigo", "RN-05");
+    void rn05DocumentoForaDoChecklistDaMatriculaEhRejeitado() {
+        assertThatThrownBy(() -> matricula.registrarEntregaDocumento(TipoDocumento.DECLARACAO_ADIMPLENCIA, "a.pdf",
+                Fixtures.HOJE)).hasFieldOrPropertyWithValue("codigo", "RN-05");
     }
 
     @Test
     void rf06EntregaRemovePendencia() {
-        matricula.registrarEntregaDocumento(TipoDocumento.HISTORICO_ESCOLAR, "historico.pdf", Fixtures.HOJE);
-        assertThat(matricula.pendencias(Fixtures.HOJE)).hasSize(6).doesNotContain(TipoDocumento.HISTORICO_ESCOLAR);
+        matricula.registrarEntregaDocumento(TipoDocumento.DOCUMENTO_ALUNO, "certidao.pdf", Fixtures.HOJE);
+        assertThat(matricula.pendencias(Fixtures.HOJE)).hasSize(5).doesNotContain(TipoDocumento.DOCUMENTO_ALUNO);
     }
 
     @Test
@@ -59,7 +60,7 @@ class MatriculaTest {
 
     @Test
     void rf08RenovacaoReaproveitaApenasDocumentosVigentes() {
-        matricula.registrarEntregaDocumento(TipoDocumento.CERTIDAO_NASCIMENTO, "certidao.pdf", Fixtures.HOJE);
+        matricula.registrarEntregaDocumento(TipoDocumento.DOCUMENTO_ALUNO, "certidao.pdf", Fixtures.HOJE);
         matricula.registrarEntregaDocumento(TipoDocumento.COMPROVANTE_RESIDENCIA, "conta.pdf", Fixtures.HOJE);
 
         Matricula renovacao = matricula.renovar(UUID.randomUUID(), NivelEnsino.ENSINO_FUNDAMENTAL, 2027,
@@ -67,7 +68,7 @@ class MatriculaTest {
 
         assertThat(renovacao.tipo()).isEqualTo(TipoMatricula.RENOVACAO);
         assertThat(renovacao.pendencias(Fixtures.HOJE.plusMonths(10)))
-                .doesNotContain(TipoDocumento.CERTIDAO_NASCIMENTO)
+                .doesNotContain(TipoDocumento.DOCUMENTO_ALUNO)
                 .contains(TipoDocumento.COMPROVANTE_RESIDENCIA);
         assertThatThrownBy(() -> matricula.renovar(UUID.randomUUID(), NivelEnsino.ENSINO_FUNDAMENTAL, 2026,
                 Fixtures.HOJE)).isInstanceOf(DomainException.class);

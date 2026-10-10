@@ -6,7 +6,9 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
-public record PreMatriculaCommand(DadosAluno aluno, DadosResponsavel responsavel, UUID turmaId) {
+/** {@code vindoDeEscolaParticular}: exige a declaração de adimplência no checklist (Anexo didático). */
+public record PreMatriculaCommand(DadosAluno aluno, DadosResponsavel responsavel, UUID turmaId,
+        boolean vindoDeEscolaParticular) {
 
     public record DadosAluno(String nome, LocalDate dataNascimento, InformacoesMedicas informacoesMedicas,
             String hospitalEmergencia, List<PessoaAutorizada> autorizados) {

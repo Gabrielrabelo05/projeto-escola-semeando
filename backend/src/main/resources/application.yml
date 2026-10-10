@@ -38,12 +38,20 @@ semeando:
     nome: "Centro Educacional Semeando / Instituto Educacional Semeando"
     cnpj: "31.486.754/0001-27"
   valores:
-    mensalidade-fundamental: 375.00
+    # Tabela oficial do Anexo didático (2026). RN-02: os valores do Fundamental são conferidos na inicialização.
+    # "com-desconto" vale para pagamento até o vencimento (10%).
+    primeiro-ano:
+      integral: 310.00
+      com-desconto: 279.00
+    segundo-ao-quinto-ano:
+      integral: 375.00
+      com-desconto: 337.00
     parcelas-fundamental: 11
-    # Valores não definidos no levantamento – ajuste conforme a tabela oficial da escola.
-    taxa-associado-infantil: 280.00
+    # Educação Infantil: paga na secretaria, sem boleto.
+    taxa-associado-infantil: 125.00
     parcelas-associado: 11
-    taxa-matricula: 150.00
+    # Jiu Jitsu / Ballet, por atividade.
+    atividade-extracurricular: 50.00
     dia-vencimento: 10
   seguranca:
     jwt-segredo: ${JWT_SECRET:dev-only-segredo-jwt-com-pelo-menos-32-bytes!!}
@@ -57,6 +65,10 @@ semeando:
     url: ${CORA_URL:https://matls-clients.api.stage.cora.com.br}
     token: ${CORA_TOKEN:}
     webhook-segredo: ${CORA_WEBHOOK_SECRET:dev-webhook-secret}
+  inpc:
+    # "ibge" usa a série oficial do INPC (API pública SIDRA); "nenhum" desliga a correção monetária.
+    modo: ${INPC_MODE:ibge}
+    url: https://apisidra.ibge.gov.br
   arquivos:
     diretorio: ${FILES_DIR:./data/arquivos}
   seed:

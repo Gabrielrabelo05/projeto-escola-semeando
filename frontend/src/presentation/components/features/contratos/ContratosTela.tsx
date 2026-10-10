@@ -156,19 +156,25 @@ function ValidacaoValores({ aoGerar, matriculas }: ValidacaoProps) {
   const [matriculaId, setMatriculaId] = useState<string>();
   const [valor, setValor] = useState("375.00");
   const [parcelas, setParcelas] = useState("11");
+  const selecionar = (id: string) => {
+    setMatriculaId(id);
+    const serie = lista.dados?.find((m) => m.id === id)?.turma?.serie;
+    setValor(serie === "PRIMEIRO_ANO" ? "310.00" : "375.00");
+  };
   return (
     <Card size="sm">
       <CardHeader>
         <CardTitle>Gerar contrato com valores informados</CardTitle>
         <CardDescription>
-          Tabela oficial do Ensino Fundamental: 11 parcelas de R$ 375,00 (total
-          R$ 4.125,00).
+          Tabela oficial do Ensino Fundamental, em 11 parcelas: 1º ano R$ 310,00
+          (R$ 279,00 até o vencimento) e 2º ao 5º ano R$ 375,00 (R$ 337,00 até o
+          vencimento).
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-wrap items-end gap-2">
         <Selecao
           valor={matriculaId}
-          aoMudar={setMatriculaId}
+          aoMudar={selecionar}
           className="w-64"
           placeholder="Matrícula aprovada"
           opcoes={(lista.dados ?? []).map((m) => ({

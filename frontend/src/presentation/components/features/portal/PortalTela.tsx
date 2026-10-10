@@ -119,8 +119,8 @@ function PainelFilho({ filho }: { filho: Filho }) {
                     },
                     { titulo: "Vencimento", celula: (c) => data(c.vencimento) },
                     {
-                      titulo: "Valor",
-                      celula: (c) => moeda(c.valorAtualizado),
+                      titulo: "A pagar hoje",
+                      celula: (c) => moeda(c.valorDevido),
                     },
                     {
                       titulo: "Status",

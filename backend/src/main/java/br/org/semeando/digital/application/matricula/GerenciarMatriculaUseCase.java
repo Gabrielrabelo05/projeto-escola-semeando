@@ -81,7 +81,7 @@ public class GerenciarMatriculaUseCase {
         atual.encerrarPorTransferencia();
         Matricula nova = new Matricula(UUID.randomUUID(), atual.alunoId(), destino.id(), atual.nivel(),
                 atual.anoLetivo(), atual.tipo(), StatusMatricula.ATIVA,
-                LocalDate.now(clock), null, atual.farda(), atual.documentos(), atual.cobrancaTaxaId());
+                LocalDate.now(clock), null, atual.farda(), atual.documentos(), atual.primeiraParcelaId());
         matriculas.salvar(atual);
         auditor.registrar(ator, AcaoAuditada.EDICAO, "Matricula", matriculaId,
                 "Transferido para a turma " + destino.nome());

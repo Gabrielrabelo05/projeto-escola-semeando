@@ -47,7 +47,7 @@ class MatriculaE2ETest {
                         .content(preMatricula("Bruno E2E Sintético", CPF_RESPONSAVEL, turmaId, true)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.status").value("AGUARDANDO_ANALISE"))
-                .andExpect(jsonPath("$.documentos.length()").value(7))
+                .andExpect(jsonPath("$.documentos.length()").value(6))
                 .andReturn().getResponse().getContentAsString();
         String matriculaId = JsonPath.read(matricula, "$.id");
         String alunoId = JsonPath.read(matricula, "$.alunoId");
@@ -87,14 +87,17 @@ class MatriculaE2ETest {
                 .andExpect(jsonPath("$.status").value("ASSINADO"))
                 .andExpect(jsonPath("$.assinatura.enderecoIp").value("200.10.20.30"));
 
-        // RF-28: webhook do Cora confirma o pagamento da taxa de matrícula
+        // RF-28: webhook do Cora confirma o pagamento da primeira parcela, que vale como sinal do contrato
         String boletos = mvc.perform(autenticado(get("/api/cobrancas/aluno/" + alunoId), financeiro))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].tipo").value("TAXA_MATRICULA"))
+                .andExpect(jsonPath("$[0].tipo").value("MENSALIDADE"))
+                .andExpect(jsonPath("$[0].valor").value(375.0))
+                .andExpect(jsonPath("$[0].valorComDesconto").value(337.0))
+                .andExpect(jsonPath("$[0].valorDevido").value(337.0))
                 .andReturn().getResponse().getContentAsString();
         String idCora = JsonPath.read(boletos, "$[0].idBoletoCora");
         String evento = """
-                {"id":"%s","status":"PAID","paid_at":null,"total_paid":150.00}""".formatted(idCora);
+                {"id":"%s","status":"PAID","paid_at":null,"total_paid":337.00}""".formatted(idCora);
 
         mvc.perform(post("/api/webhooks/cora").contentType(MediaType.APPLICATION_JSON).content(evento))
                 .andExpect(status().isUnauthorized());

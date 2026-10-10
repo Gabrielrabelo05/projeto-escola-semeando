@@ -13,6 +13,7 @@ import type {
 import type {
   AlunoDetalhe,
   AlunoResumo,
+  AtividadeExtracurricular,
   StatusAluno,
   Turma,
   UUID,
@@ -32,6 +33,13 @@ export class HttpCadastroGateway implements CadastroGateway {
 
   inativarAluno(id: UUID): Promise<AlunoResumo> {
     return this.http.patch(`/alunos/${id}/inativar`);
+  }
+
+  definirAtividades(
+    id: UUID,
+    atividades: AtividadeExtracurricular[],
+  ): Promise<AlunoDetalhe> {
+    return this.http.put(`/alunos/${id}/atividades`, { atividades });
   }
 
   professores(incluirInativos = false): Promise<Professor[]> {

@@ -5,7 +5,10 @@ import Link from "next/link";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import type { AtividadeExtracurricular } from "@/domain/models/comum";
 import { Confirmacao } from "@/presentation/components/shared/Confirmacao";
 import { Conteudo } from "@/presentation/components/shared/Estados";
 import { PageHeader } from "@/presentation/components/shared/PageHeader";
@@ -15,6 +18,11 @@ import { useAcao } from "@/presentation/hooks/useAcao";
 import { useCarregar } from "@/presentation/hooks/useCarregar";
 import { data, moeda, rotulo } from "@/presentation/lib/formatadores";
 import { useGateways } from "@/presentation/providers/GatewayProvider";
+
+const ATIVIDADES: { valor: AtividadeExtracurricular; rotulo: string }[] = [
+  { valor: "JIU_JITSU", rotulo: "Jiu Jitsu" },
+  { valor: "BALLET", rotulo: "Ballet" },
+];
 
 export function FichaAlunoTela({ id }: { id: string }) {
   const { cadastro, matricula, cobranca, contrato } = useGateways();
@@ -26,6 +34,10 @@ export function FichaAlunoTela({ id }: { id: string }) {
     [id],
   );
   const [inativando, setInativando] = useState(false);
+  const atividades = useAcao(async (lista: AtividadeExtracurricular[]) => {
+    await cadastro.definirAtividades(id, lista);
+    await ficha.recarregar();
+  }, "Atividades atualizadas");
   const inativar = useAcao(async () => {
     await cadastro.inativarAluno(id);
     await ficha.recarregar();
@@ -63,8 +75,35 @@ export function FichaAlunoTela({ id }: { id: string }) {
               <CardHeader>
                 <CardTitle>Situação</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-3">
                 <StatusBadge status={a.status} />
+                <div className="space-y-1.5">
+                  <p className="text-xs text-muted-foreground">
+                    Atividades extracurriculares (R$ 50,00 cada, por mês)
+                  </p>
+                  {ATIVIDADES.map(({ valor, rotulo: nome }) => (
+                    <div key={valor} className="flex items-center gap-2">
+                      <Checkbox
+                        id={`atividade-${valor}`}
+                        checked={a.atividades.includes(valor)}
+                        disabled={atividades.executando}
+                        onCheckedChange={(marcado) =>
+                          atividades.executar(
+                            marcado === true
+                              ? [...a.atividades, valor]
+                              : a.atividades.filter((x) => x !== valor),
+                          )
+                        }
+                      />
+                      <Label
+                        htmlFor={`atividade-${valor}`}
+                        className="font-normal"
+                      >
+                        {nome}
+                      </Label>
+                    </div>
+                  ))}
+                </div>
               </CardContent>
             </Card>
             <Card size="sm">
@@ -137,8 +176,8 @@ export function FichaAlunoTela({ id }: { id: string }) {
                       },
                       { titulo: "Valor", celula: (c) => moeda(c.valor) },
                       {
-                        titulo: "Atualizado",
-                        celula: (c) => moeda(c.valorAtualizado),
+                        titulo: "A pagar hoje",
+                        celula: (c) => moeda(c.valorDevido),
                       },
                       {
                         titulo: "Status",

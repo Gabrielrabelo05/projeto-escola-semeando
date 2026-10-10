@@ -1,6 +1,7 @@
 package br.org.semeando.digital.presentation.rest.shared;
 
 import br.org.semeando.digital.domain.aluno.Aluno;
+import br.org.semeando.digital.domain.aluno.AtividadeExtracurricular;
 import br.org.semeando.digital.domain.aluno.PessoaAutorizada;
 import br.org.semeando.digital.domain.pessoa.Responsavel;
 import br.org.semeando.digital.domain.shared.Dinheiro;
@@ -36,14 +37,15 @@ public final class Dtos {
 
     public record AlunoDetalhe(UUID id, String nome, LocalDate dataNascimento, String status, String cpfResponsavel,
             String alergias, String tipoSanguineo, String necessidadesEspeciais, String hospitalEmergencia,
-            List<AutorizadoDto> autorizados, String fotoUrl, ResponsavelDto responsavel) {
+            List<AutorizadoDto> autorizados, String fotoUrl, ResponsavelDto responsavel,
+            List<AtividadeExtracurricular> atividades) {
 
         public static AlunoDetalhe de(Aluno a, Responsavel r) {
             var med = a.informacoesMedicas();
             return new AlunoDetalhe(a.id(), a.nome(), a.dataNascimento(), a.status().name(),
                     a.cpfResponsavel().formatado(), med.alergias(), med.tipoSanguineo(), med.necessidadesEspeciais(),
                     a.hospitalEmergencia(), a.autorizados().stream().map(AutorizadoDto::de).toList(), a.fotoUrl(),
-                    r == null ? null : ResponsavelDto.de(r));
+                    r == null ? null : ResponsavelDto.de(r), a.atividades().stream().sorted().toList());
         }
     }
 

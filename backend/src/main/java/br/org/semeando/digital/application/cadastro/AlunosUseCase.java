@@ -5,6 +5,7 @@ import br.org.semeando.digital.application.shared.Ator;
 import br.org.semeando.digital.application.shared.CasoDeUso;
 import br.org.semeando.digital.domain.aluno.Aluno;
 import br.org.semeando.digital.domain.aluno.AlunoRepository;
+import br.org.semeando.digital.domain.aluno.AtividadeExtracurricular;
 import br.org.semeando.digital.domain.aluno.InformacoesMedicas;
 import br.org.semeando.digital.domain.aluno.PessoaAutorizada;
 import br.org.semeando.digital.domain.aluno.StatusAluno;
@@ -14,6 +15,7 @@ import br.org.semeando.digital.domain.pessoa.ResponsavelRepository;
 import br.org.semeando.digital.domain.shared.RecursoNaoEncontradoException;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 /** RF-07 / RF-31 / RF-37: ficha completa do aluno. */
@@ -45,6 +47,14 @@ public class AlunosUseCase {
         aluno.atualizarFicha(comando.nome(), comando.dataNascimento(), comando.informacoesMedicas(),
                 comando.hospitalEmergencia(), comando.autorizados(), comando.fotoUrl());
         auditor.registrar(ator, AcaoAuditada.EDICAO, "Aluno", id, "Ficha do aluno atualizada");
+        return alunos.salvar(aluno);
+    }
+
+    /** Inscrição em Jiu Jitsu / Ballet (cobrados à parte a partir da próxima geração mensal). */
+    public Aluno definirAtividades(UUID id, Set<AtividadeExtracurricular> atividades, Ator ator) {
+        Aluno aluno = buscar(id);
+        aluno.definirAtividades(atividades);
+        auditor.registrar(ator, AcaoAuditada.EDICAO, "Aluno", id, "Atividades extracurriculares: " + atividades);
         return alunos.salvar(aluno);
     }
 

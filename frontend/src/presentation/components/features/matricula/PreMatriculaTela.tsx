@@ -15,12 +15,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   FieldError,
   FieldGroup,
   FieldLegend,
   FieldSet,
 } from "@/components/ui/field";
+import { Label } from "@/components/ui/label";
 import { mensagemDeErro } from "@/domain/models/erro";
 import type { Matricula } from "@/domain/models/matricula";
 import { Marca } from "@/presentation/components/layout/Marca";
@@ -47,6 +49,7 @@ const VAZIO: PreMatriculaForm = {
   },
   responsavel: { nome: "", cpf: "", email: "", telefone: "", parentesco: "" },
   turmaId: "",
+  vindoDeEscolaParticular: false,
 };
 
 /** RF-01: formulário digital de pré-matrícula, em etapas. */
@@ -309,6 +312,23 @@ export function PreMatriculaTela() {
                       invalido={!!errors.turmaId}
                     />
                   </Campo>
+                )}
+              />
+              <Controller
+                control={control}
+                name="vindoDeEscolaParticular"
+                render={({ field }) => (
+                  <div className="flex items-start gap-2">
+                    <Checkbox
+                      id="escola-particular"
+                      checked={field.value}
+                      onCheckedChange={(v) => field.onChange(v === true)}
+                    />
+                    <Label htmlFor="escola-particular" className="font-normal">
+                      O aluno vem de outra escola particular (será pedida a
+                      declaração de adimplência)
+                    </Label>
+                  </div>
                 )}
               />
               <p className="text-xs text-muted-foreground">

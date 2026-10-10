@@ -13,6 +13,7 @@ import br.org.semeando.digital.domain.shared.Dinheiro;
 import br.org.semeando.digital.domain.turma.NivelEnsino;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 /** Dados sintéticos para testes (RN-08). */
@@ -25,7 +26,8 @@ public final class Fixtures {
     }
 
     public static TabelaValores tabela() {
-        return new TabelaValores(Dinheiro.de("375.00"), 11, Dinheiro.de("280.00"), 11, Dinheiro.de("150.00"), 10);
+        return new TabelaValores(TabelaValores.PRIMEIRO_ANO_OFICIAL, TabelaValores.SEGUNDO_AO_QUINTO_ANO_OFICIAL, 11,
+                Dinheiro.de("125.00"), 11, Dinheiro.de("50.00"), 10);
     }
 
     public static Responsavel responsavel() {
@@ -38,10 +40,10 @@ public final class Fixtures {
                 ? List.of(new PessoaAutorizada("Avó Sintética", "RG 123", "Avó", null)) : List.of();
         return new Aluno(UUID.randomUUID(), "Lucas Sintético", LocalDate.of(2019, 5, 1), responsavel.id(),
                 responsavel.cpf(), InformacoesMedicas.naoInformadas(), comDadosSeguranca ? "Hospital Sintético" : null,
-                autorizados, null, StatusAluno.PRE_MATRICULA);
+                autorizados, null, StatusAluno.PRE_MATRICULA, Set.of());
     }
 
     public static Matricula matricula(Aluno aluno, NivelEnsino nivel) {
-        return Matricula.solicitar(aluno.id(), UUID.randomUUID(), nivel, 2026, HOJE);
+        return Matricula.solicitar(aluno.id(), UUID.randomUUID(), nivel, 2026, false, HOJE);
     }
 }

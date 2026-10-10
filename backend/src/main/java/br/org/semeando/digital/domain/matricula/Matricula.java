@@ -22,11 +22,11 @@ public class Matricula {
     private String justificativaRejeicao;
     private Farda farda;
     private final List<DocumentoMatricula> documentos;
-    private UUID cobrancaTaxaId;
+    private UUID primeiraParcelaId;
 
     public Matricula(UUID id, UUID alunoId, UUID turmaId, NivelEnsino nivel, int anoLetivo, TipoMatricula tipo,
             StatusMatricula status, LocalDate dataSolicitacao, String justificativaRejeicao, Farda farda,
-            List<DocumentoMatricula> documentos, UUID cobrancaTaxaId) {
+            List<DocumentoMatricula> documentos, UUID primeiraParcelaId) {
         this.id = Validacoes.obrigatorio(id, "id");
         this.alunoId = Validacoes.obrigatorio(alunoId, "aluno");
         this.turmaId = Validacoes.obrigatorio(turmaId, "turma");
@@ -38,12 +38,16 @@ public class Matricula {
         this.justificativaRejeicao = justificativaRejeicao;
         this.farda = farda;
         this.documentos = new ArrayList<>(documentos);
-        this.cobrancaTaxaId = cobrancaTaxaId;
+        this.primeiraParcelaId = primeiraParcelaId;
     }
 
-    /** RF-01: pré-matrícula com checklist de documentos conforme o nível de ensino (RN-05). */
-    public static Matricula solicitar(UUID alunoId, UUID turmaId, NivelEnsino nivel, int anoLetivo, LocalDate hoje) {
-        List<DocumentoMatricula> checklist = TipoDocumento.exigidosPara(nivel).stream()
+    /**
+     * RF-01: pré-matrícula com o checklist de documentos (RN-05). Alunos vindos de outra instituição particular
+     * também precisam apresentar a declaração de adimplência.
+     */
+    public static Matricula solicitar(UUID alunoId, UUID turmaId, NivelEnsino nivel, int anoLetivo,
+            boolean vindoDeEscolaParticular, LocalDate hoje) {
+        List<DocumentoMatricula> checklist = TipoDocumento.exigidos(vindoDeEscolaParticular).stream()
                 .map(DocumentoMatricula::pendente)
                 .toList();
         return new Matricula(UUID.randomUUID(), alunoId, turmaId, nivel, anoLetivo, TipoMatricula.NOVA,
@@ -55,7 +59,7 @@ public class Matricula {
         if (novoAnoLetivo <= anoLetivo) {
             throw new DomainException("RENOVACAO_INVALIDA", "A renovação deve ser para um ano letivo posterior");
         }
-        List<DocumentoMatricula> checklist = TipoDocumento.exigidosPara(novoNivel).stream()
+        List<DocumentoMatricula> checklist = TipoDocumento.exigidos(false).stream()
                 .map(tipoDoc -> documentos.stream()
                         .filter(doc -> doc.tipo() == tipoDoc && doc.vigenteEm(hoje))
                         .findFirst()
@@ -78,7 +82,7 @@ public class Matricula {
         this.status = StatusMatricula.REJEITADA;
     }
 
-    /** Passo 13 do fluxo: após confirmação de pagamento da taxa a matrícula fica ATIVA. */
+    /** Passo 13 do fluxo: após a confirmação do pagamento da primeira parcela a matrícula fica ATIVA. */
     public void ativar() {
         exigirStatus(StatusMatricula.APROVADA, "ativar");
         this.status = StatusMatricula.ATIVA;
@@ -101,15 +105,16 @@ public class Matricula {
         this.farda = Validacoes.obrigatorio(farda, "farda");
     }
 
-    public void vincularCobrancaTaxa(UUID cobrancaId) {
-        this.cobrancaTaxaId = Validacoes.obrigatorio(cobrancaId, "cobrança");
+    /** A primeira parcela (mensalidade ou taxa de associado) confirma a matrícula, como sinal do contrato. */
+    public void vincularPrimeiraParcela(UUID cobrancaId) {
+        this.primeiraParcelaId = Validacoes.obrigatorio(cobrancaId, "cobrança");
     }
 
     /** RF-06: registra a entrega de um documento do checklist. */
     public void registrarEntregaDocumento(TipoDocumento tipoDocumento, String arquivo, LocalDate data) {
-        if (!tipoDocumento.exigidoPara(nivel)) {
+        if (documentos.stream().noneMatch(doc -> doc.tipo() == tipoDocumento)) {
             throw new DomainException("RN-05",
-                    tipoDocumento.descricao() + " não faz parte do checklist de " + nivel.descricao());
+                    tipoDocumento.descricao() + " não faz parte do checklist desta matrícula");
         }
         documentos.replaceAll(doc -> doc.tipo() == tipoDocumento
                 ? new DocumentoMatricula(tipoDocumento, Validacoes.obrigatorio(arquivo, "arquivo"), data)
@@ -175,7 +180,7 @@ public class Matricula {
         return Collections.unmodifiableList(documentos);
     }
 
-    public UUID cobrancaTaxaId() {
-        return cobrancaTaxaId;
+    public UUID primeiraParcelaId() {
+        return primeiraParcelaId;
     }
 }

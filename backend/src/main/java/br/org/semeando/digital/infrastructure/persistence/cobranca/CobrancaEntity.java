@@ -28,6 +28,7 @@ class CobrancaEntity {
     private TipoCobranca tipo;
     private String mesReferencia;
     private BigDecimal valor;
+    private BigDecimal valorComDesconto;
     private LocalDate vencimento;
     @Enumerated(EnumType.STRING)
     private StatusCobranca status;
@@ -50,6 +51,7 @@ class CobrancaEntity {
         e.tipo = c.tipo();
         e.mesReferencia = c.mesReferencia().toString();
         e.valor = c.valor().valor();
+        e.valorComDesconto = c.valorComDesconto().valor();
         e.vencimento = c.vencimento();
         e.status = c.status();
         if (c.boleto() != null) {
@@ -70,7 +72,7 @@ class CobrancaEntity {
         Boleto boleto = boletoIdCora == null ? null : new Boleto(boletoIdCora, boletoLinhaDigitavel, boletoUrl);
         Pagamento pagamento = pagoEm == null ? null
                 : new Pagamento(pagoEm, Dinheiro.de(valorPago), formaPagamento, registradoPor);
-        return new Cobranca(id, alunoId, tipo, MesReferencia.de(mesReferencia), Dinheiro.de(valor), vencimento,
-                status, boleto, pagamento);
+        return new Cobranca(id, alunoId, tipo, MesReferencia.de(mesReferencia), Dinheiro.de(valor),
+                valorComDesconto == null ? null : Dinheiro.de(valorComDesconto), vencimento, status, boleto, pagamento);
     }
 }

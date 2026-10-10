@@ -115,8 +115,13 @@ function Cobrancas({ mes, podeGerar }: { mes: string; podeGerar: boolean }) {
                 className: "text-right tabular-nums",
               },
               {
-                titulo: "Atualizado",
-                celula: (c) => moeda(c.valorAtualizado),
+                titulo: "Até o vencimento",
+                celula: (c) => moeda(c.valorComDesconto),
+                className: "text-right tabular-nums",
+              },
+              {
+                titulo: "A pagar hoje",
+                celula: (c) => moeda(c.valorDevido),
                 className: "text-right tabular-nums",
               },
               {
@@ -202,6 +207,11 @@ function Inadimplencia({ mes }: { mes: string }) {
               {
                 titulo: "Juros 0,033%/dia",
                 celula: (i) => moeda(i.juros),
+                className: "text-right tabular-nums",
+              },
+              {
+                titulo: "Correção INPC",
+                celula: (i) => moeda(i.correcao),
                 className: "text-right tabular-nums",
               },
               {

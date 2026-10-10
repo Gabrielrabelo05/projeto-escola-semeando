@@ -40,7 +40,7 @@ class MatriculaEntity {
     private String fardaBlusa;
     private String fardaCalca;
     private String fardaTenis;
-    private UUID cobrancaTaxaId;
+    private UUID primeiraParcelaId;
 
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "matricula_documentos", joinColumns = @JoinColumn(name = "matricula_id"))
@@ -66,7 +66,7 @@ class MatriculaEntity {
             e.fardaCalca = m.farda().calca();
             e.fardaTenis = m.farda().tenis();
         }
-        e.cobrancaTaxaId = m.cobrancaTaxaId();
+        e.primeiraParcelaId = m.primeiraParcelaId();
         e.documentos = new ArrayList<>(m.documentos().stream().map(DocumentoMatriculaEmbeddable::de).toList());
         return e;
     }
@@ -75,6 +75,6 @@ class MatriculaEntity {
         Farda farda = fardaBlusa == null ? null : new Farda(fardaBlusa, fardaCalca, fardaTenis);
         return new Matricula(id, alunoId, turmaId, nivel, anoLetivo, tipo, status, dataSolicitacao,
                 justificativaRejeicao, farda, documentos.stream().map(DocumentoMatriculaEmbeddable::paraDominio)
-                        .toList(), cobrancaTaxaId);
+                        .toList(), primeiraParcelaId);
     }
 }

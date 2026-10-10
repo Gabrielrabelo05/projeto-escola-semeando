@@ -53,7 +53,7 @@ export function MatriculaDetalhe({ matriculaId, aoFechar, aoAlterar }: Props) {
   const aprovar = useAcao(async () => {
     const contrato = await matricula.aprovar(matriculaId as UUID);
     toast.success(
-      `Matrícula aprovada. ${rotulo(contrato.tipo)} gerado e taxa de matrícula emitida.`,
+      `Matrícula aprovada. ${rotulo(contrato.tipo)} gerado e primeira parcela emitida.`,
     );
     await atualizar();
   });
@@ -242,7 +242,7 @@ export function MatriculaDetalhe({ matriculaId, aoFechar, aoAlterar }: Props) {
         aberto={dialogo === "aprovar"}
         aoFechar={() => setDialogo(null)}
         titulo="Aprovar matrícula?"
-        descricao="O sistema vai gerar o contrato/ficha de sócio conforme o nível de ensino (RN-01) e emitir o boleto da taxa de matrícula no Cora."
+        descricao="O sistema vai gerar o contrato/ficha de sócio conforme o nível de ensino (RN-01) e a primeira parcela, cujo pagamento confirma a matrícula: boleto no Cora para o Fundamental e taxa de associado paga na secretaria para o Infantil."
         rotuloConfirmar="Aprovar"
         aoConfirmar={() => aprovar.executar()}
       />

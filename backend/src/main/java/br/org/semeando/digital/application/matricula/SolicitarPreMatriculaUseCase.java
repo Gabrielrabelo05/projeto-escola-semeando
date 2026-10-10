@@ -52,7 +52,7 @@ public class SolicitarPreMatriculaUseCase {
         Aluno aluno = alunos.salvar(Aluno.preMatricular(dados.nome(), dados.dataNascimento(), responsavel.id(),
                 responsavel.cpf(), dados.informacoesMedicas(), dados.hospitalEmergencia(), dados.autorizados()));
         Matricula matricula = matriculas.salvar(Matricula.solicitar(aluno.id(), turma.id(), turma.nivel(),
-                turma.anoLetivo(), LocalDate.now(clock)));
+                turma.anoLetivo(), comando.vindoDeEscolaParticular(), LocalDate.now(clock)));
 
         auditor.registrar(ator, AcaoAuditada.CRIACAO, "Matricula", matricula.id(),
                 "Pré-matrícula de " + aluno.nome() + " em " + turma.nome());

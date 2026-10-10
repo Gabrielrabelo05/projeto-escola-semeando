@@ -16,6 +16,7 @@ const valido = {
     parentesco: "Mãe",
   },
   turmaId: "t1",
+  vindoDeEscolaParticular: false,
 };
 
 describe("preMatriculaSchema", () => {

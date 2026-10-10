@@ -30,8 +30,9 @@ public final class MatriculaDtos {
     private MatriculaDtos() {
     }
 
+    /** {@code vindoDeEscolaParticular}: inclui a declaração de adimplência no checklist. */
     public record PreMatriculaRequest(@NotNull @Valid AlunoRequest aluno, @NotNull @Valid ResponsavelRequest responsavel,
-            @NotNull UUID turmaId) {
+            @NotNull UUID turmaId, Boolean vindoDeEscolaParticular) {
 
         PreMatriculaCommand paraComando() {
             return new PreMatriculaCommand(
@@ -42,7 +43,7 @@ public final class MatriculaDtos {
                             aluno.autorizados().stream().map(AutorizadoDto::paraDominio).toList()),
                     new PreMatriculaCommand.DadosResponsavel(responsavel.nome(), responsavel.cpf(), responsavel.email(),
                             responsavel.telefone(), responsavel.parentesco()),
-                    turmaId);
+                    turmaId, Boolean.TRUE.equals(vindoDeEscolaParticular));
         }
     }
 
@@ -82,7 +83,7 @@ public final class MatriculaDtos {
 
     public record MatriculaResponse(UUID id, UUID alunoId, UUID turmaId, String nivel, int anoLetivo, String tipo,
             String status, LocalDate dataSolicitacao, String justificativaRejeicao, FardaRequest farda,
-            List<DocumentoResponse> documentos, UUID cobrancaTaxaId, AlunoResumo aluno, TurmaDto turma) {
+            List<DocumentoResponse> documentos, UUID primeiraParcelaId, AlunoResumo aluno, TurmaDto turma) {
 
         static MatriculaResponse de(Matricula m, Clock clock) {
             return de(m, null, null, clock);
@@ -98,7 +99,7 @@ public final class MatriculaDtos {
                     : new FardaRequest(m.farda().blusa(), m.farda().calca(), m.farda().tenis());
             return new MatriculaResponse(m.id(), m.alunoId(), m.turmaId(), m.nivel().name(), m.anoLetivo(),
                     m.tipo().name(), m.status().name(), m.dataSolicitacao(), m.justificativaRejeicao(), farda,
-                    m.documentos().stream().map(d -> DocumentoResponse.de(d, hoje)).toList(), m.cobrancaTaxaId(),
+                    m.documentos().stream().map(d -> DocumentoResponse.de(d, hoje)).toList(), m.primeiraParcelaId(),
                     aluno, turma);
         }
     }

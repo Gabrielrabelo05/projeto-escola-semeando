@@ -9,16 +9,15 @@ export type StatusMatricula =
   | "CANCELADA"
   | "CONCLUIDA";
 
+/** Checklist do Anexo didático da escola. */
 export type TipoDocumento =
-  | "CERTIDAO_NASCIMENTO"
   | "DOCUMENTO_RESPONSAVEL"
+  | "DOCUMENTO_ALUNO"
+  | "CARTEIRA_VACINACAO"
   | "COMPROVANTE_RESIDENCIA"
-  | "CARTAO_VACINACAO"
-  | "FOTO_3X4"
-  | "CARTAO_SUS"
-  | "LAUDO_MEDICO"
-  | "DECLARACAO_TRANSFERENCIA"
-  | "HISTORICO_ESCOLAR";
+  | "DECLARACAO_ADIMPLENCIA"
+  | "FOTOS_3X4"
+  | "DOCUMENTO_AUTORIZADOS";
 
 export interface DocumentoMatricula {
   tipo: TipoDocumento;
@@ -46,7 +45,8 @@ export interface Matricula {
   justificativaRejeicao: string | null;
   farda: Farda | null;
   documentos: DocumentoMatricula[];
-  cobrancaTaxaId: UUID | null;
+  /** Primeira parcela: o pagamento confirma a matrícula (sinal do contrato). */
+  primeiraParcelaId: UUID | null;
   aluno: AlunoResumo | null;
   turma: Turma | null;
 }
@@ -69,6 +69,8 @@ export interface PreMatricula {
     parentesco: string;
   };
   turmaId: UUID;
+  /** Inclui a declaração de adimplência no checklist. */
+  vindoDeEscolaParticular?: boolean;
 }
 
 export interface OcupacaoTurma {

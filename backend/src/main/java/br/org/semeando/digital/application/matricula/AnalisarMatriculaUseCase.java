@@ -12,11 +12,13 @@ import br.org.semeando.digital.domain.cobranca.TipoCobranca;
 import br.org.semeando.digital.domain.contrato.DocumentoVinculo;
 import br.org.semeando.digital.domain.contrato.DocumentoVinculoRepository;
 import br.org.semeando.digital.domain.contrato.GeradorDocumentoVinculo;
+import br.org.semeando.digital.domain.contrato.Mensalidade;
 import br.org.semeando.digital.domain.contrato.TabelaValores;
 import br.org.semeando.digital.domain.matricula.Matricula;
 import br.org.semeando.digital.domain.matricula.MatriculaRepository;
 import br.org.semeando.digital.domain.pessoa.Responsavel;
 import br.org.semeando.digital.domain.shared.MesReferencia;
+import br.org.semeando.digital.domain.turma.NivelEnsino;
 import br.org.semeando.digital.domain.turma.Turma;
 import java.time.Clock;
 import java.time.LocalDate;
@@ -25,12 +27,14 @@ import java.util.UUID;
 
 /**
  * RF-02: aprovação ou rejeição da matrícula pela secretaria.
- * A aprovação gera o vínculo contratual correto (passos 6–8) e o boleto da taxa de matrícula (RF-03).
+ * A aprovação gera o vínculo contratual correto (passos 6–8) e a primeira parcela (RF-03): pelo contrato, o
+ * pagamento da primeira parcela da anuidade confirma a matrícula. No Fundamental ela tem boleto no Cora; na
+ * Educação Infantil é a primeira taxa de associado, paga na secretaria.
  */
 @CasoDeUso
 public class AnalisarMatriculaUseCase {
 
-    private static final int DIAS_PARA_VENCIMENTO_TAXA = 5;
+    private static final int DIAS_PARA_VENCIMENTO_PRIMEIRA_PARCELA = 5;
 
     private final MatriculaContexto contexto;
     private final MatriculaRepository matriculas;
@@ -64,24 +68,41 @@ public class AnalisarMatriculaUseCase {
 
         contexto.garantirMatriculaUnica(matricula);
         turma.garantirVaga(matriculas.contarOcupandoVaga(turma.id()));
-        DocumentoVinculo vinculo = gerador.gerarComTabelaOficial(aluno, responsavel, matricula, ator.nome(),
-                clock.instant());
+        DocumentoVinculo vinculo = gerador.gerarComTabelaOficial(aluno, responsavel, matricula, turma.serie(),
+                ator.nome(), clock.instant());
         matricula.aprovar();
 
         LocalDate hoje = LocalDate.now(clock);
-        Cobranca taxa = emissor.emitir(aluno, responsavel, TipoCobranca.TAXA_MATRICULA,
-                new MesReferencia(YearMonth.from(hoje)), tabela.taxaMatricula(),
-                hoje.plusDays(DIAS_PARA_VENCIMENTO_TAXA));
-        matricula.vincularCobrancaTaxa(taxa.id());
+        TipoCobranca tipo = matricula.nivel() == NivelEnsino.EDUCACAO_INFANTIL ? TipoCobranca.TAXA_ASSOCIADO
+                : TipoCobranca.MENSALIDADE;
+        Mensalidade valores = tabela.valorMensalPara(turma.serie());
+        Cobranca primeiraParcela = emissor.emitir(aluno, responsavel, tipo, primeiroMes(matricula, hoje), valores,
+                hoje.plusDays(DIAS_PARA_VENCIMENTO_PRIMEIRA_PARCELA));
+        matricula.vincularPrimeiraParcela(primeiraParcela.id());
 
         matriculas.salvar(matricula);
         vinculos.salvar(vinculo);
         auditor.registrar(ator, AcaoAuditada.APROVACAO, "Matricula", matricula.id(), "Matrícula aprovada");
         notificador.responsavel(responsavel, "Matrícula aprovada",
                 "A matrícula de " + aluno.nome() + " foi aprovada. Assine o " + vinculo.tipo()
-                        + " no portal e pague a taxa de matrícula (" + tabela.taxaMatricula() + ") até "
-                        + taxa.vencimento() + ". Pendências de documentos: " + matricula.pendencias(hoje).size());
+                        + " no portal e pague a primeira parcela (" + instrucaoPagamento(tipo, valores) + ") até "
+                        + primeiraParcela.vencimento() + ". Pendências de documentos: "
+                        + matricula.pendencias(hoje).size());
         return vinculo;
+    }
+
+    /** Janeiro do ano letivo ou, se ele já começou, o mês corrente. */
+    private static MesReferencia primeiroMes(Matricula matricula, LocalDate hoje) {
+        YearMonth inicio = YearMonth.of(matricula.anoLetivo(), 1);
+        YearMonth atual = YearMonth.from(hoje);
+        return new MesReferencia(atual.isAfter(inicio) ? atual : inicio);
+    }
+
+    private static String instrucaoPagamento(TipoCobranca tipo, Mensalidade valores) {
+        if (tipo == TipoCobranca.TAXA_ASSOCIADO) {
+            return valores.integral() + ", diretamente na secretaria";
+        }
+        return valores.comDesconto() + " até o vencimento ou " + valores.integral() + " depois";
     }
 
     public Matricula rejeitar(UUID matriculaId, String justificativa, Ator ator) {

@@ -25,12 +25,12 @@ describe("gateways HTTP", () => {
 
     await gateways.matricula.enviarDocumento(
       "m1",
-      "HISTORICO_ESCOLAR",
+      "DOCUMENTO_ALUNO",
       new File(["x"], "historico.pdf"),
     );
     expect(http.ultima).toMatchObject({
       metodo: "UPLOAD",
-      url: "/matriculas/m1/documentos/HISTORICO_ESCOLAR",
+      url: "/matriculas/m1/documentos/DOCUMENTO_ALUNO",
     });
   });
 

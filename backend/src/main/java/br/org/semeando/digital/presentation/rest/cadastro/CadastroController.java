@@ -9,6 +9,7 @@ import br.org.semeando.digital.application.cadastro.ProfessoresUseCase;
 import br.org.semeando.digital.application.cadastro.TurmasUseCase;
 import br.org.semeando.digital.application.shared.Ator;
 import br.org.semeando.digital.domain.aluno.StatusAluno;
+import br.org.semeando.digital.presentation.rest.cadastro.CadastroDtos.AtividadesRequest;
 import br.org.semeando.digital.presentation.rest.cadastro.CadastroDtos.AtualizarAlunoRequest;
 import br.org.semeando.digital.presentation.rest.cadastro.CadastroDtos.AuditoriaResponse;
 import br.org.semeando.digital.presentation.rest.cadastro.CadastroDtos.FuncionarioRequest;
@@ -87,6 +88,15 @@ public class CadastroController {
     public AlunoDetalhe atualizarAluno(@PathVariable UUID id, @Valid @RequestBody AtualizarAlunoRequest request,
             Ator ator) {
         alunos.atualizar(id, request.paraComando(), ator);
+        return aluno(id);
+    }
+
+    /** Jiu Jitsu / Ballet: R$ 50,00 por atividade, cobrados na geração mensal. */
+    @PutMapping("/alunos/{id}/atividades")
+    @PreAuthorize(Perfis.SECRETARIA)
+    public AlunoDetalhe definirAtividades(@PathVariable UUID id, @Valid @RequestBody AtividadesRequest request,
+            Ator ator) {
+        alunos.definirAtividades(id, request.atividades(), ator);
         return aluno(id);
     }
 

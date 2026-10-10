@@ -1,6 +1,7 @@
 import type { AlunoResumo, DataISO, UUID } from "./comum";
 
-export type TipoCobranca = "TAXA_MATRICULA" | "MENSALIDADE" | "TAXA_ASSOCIADO";
+/** Taxa de associado (Infantil) é paga na secretaria, sem boleto. */
+export type TipoCobranca = "MENSALIDADE" | "TAXA_ASSOCIADO" | "EXTRACURRICULAR";
 export type FormaPagamento =
   | "BOLETO"
   | "PIX"
@@ -14,6 +15,8 @@ export interface Cobranca {
   tipo: TipoCobranca;
   mesReferencia: string;
   valor: number;
+  /** Valor para pagamento até o vencimento (desconto de 10% nas mensalidades). */
+  valorComDesconto: number;
   vencimento: DataISO;
   status: "EMITIDA" | "PAGA" | "CANCELADA";
   vencida: boolean;
@@ -23,7 +26,8 @@ export interface Cobranca {
   pagoEm: DataISO | null;
   valorPago: number | null;
   formaPagamento: FormaPagamento | null;
-  valorAtualizado: number;
+  /** Valor a pagar hoje: com desconto até o vencimento; depois, integral mais encargos. */
+  valorDevido: number;
 }
 
 export interface Inadimplente {
@@ -35,6 +39,8 @@ export interface Inadimplente {
   valorOriginal: number;
   multa: number;
   juros: number;
+  /** Correção pelo INPC (atraso de 30 dias ou mais). */
+  correcao: number;
   valorAtualizado: number;
 }
 

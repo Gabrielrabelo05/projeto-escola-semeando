@@ -6,6 +6,7 @@ import br.org.semeando.digital.domain.aluno.AlunoRepository;
 import br.org.semeando.digital.domain.cobranca.Cobranca;
 import br.org.semeando.digital.domain.cobranca.CobrancaRepository;
 import br.org.semeando.digital.domain.cobranca.Encargos;
+import br.org.semeando.digital.domain.cobranca.IndiceCorrecaoMonetaria;
 import br.org.semeando.digital.domain.cobranca.StatusCobranca;
 import br.org.semeando.digital.domain.shared.Dinheiro;
 import br.org.semeando.digital.domain.shared.MesReferencia;
@@ -29,12 +30,19 @@ public class ConsultarFinanceiroUseCase {
 
     private final CobrancaRepository cobrancas;
     private final AlunoRepository alunos;
+    private final IndiceCorrecaoMonetaria indice;
     private final Clock clock;
 
-    public ConsultarFinanceiroUseCase(CobrancaRepository cobrancas, AlunoRepository alunos, Clock clock) {
+    public ConsultarFinanceiroUseCase(CobrancaRepository cobrancas, AlunoRepository alunos,
+            IndiceCorrecaoMonetaria indice, Clock clock) {
         this.cobrancas = cobrancas;
         this.alunos = alunos;
+        this.indice = indice;
         this.clock = clock;
+    }
+
+    public CobrancaComAluno detalhar(Cobranca cobranca) {
+        return comAlunos(List.of(cobranca)).getFirst();
     }
 
     public List<CobrancaComAluno> listar(MesReferencia mes) {
@@ -45,13 +53,13 @@ public class ConsultarFinanceiroUseCase {
         return comAlunos(cobrancas.listarPorAluno(alunoId));
     }
 
-    /** RF-26: alunos inadimplentes com valor original, juros e multa calculados. */
+    /** RF-26: alunos inadimplentes com valor original, multa, juros e correção pelo INPC calculados. */
     public List<Inadimplente> inadimplencia(MesReferencia mes) {
         LocalDate hoje = LocalDate.now(clock);
         List<Cobranca> base = mes == null ? cobrancas.listarEmAberto() : cobrancas.listarPorMes(mes);
         return comAlunos(base.stream().filter(c -> c.vencidaEm(hoje)).toList()).stream()
-                .map(item -> new Inadimplente(item.cobranca(), item.aluno(), item.cobranca().encargosEm(hoje),
-                        item.cobranca().valorAtualizadoEm(hoje)))
+                .map(item -> new Inadimplente(item.cobranca(), item.aluno(),
+                        item.cobranca().encargosEm(hoje, indice), item.valorDevido()))
                 .sorted(Comparator.comparing((Inadimplente i) -> i.cobranca().vencimento()))
                 .toList();
     }
@@ -107,13 +115,17 @@ public class ConsultarFinanceiroUseCase {
     }
 
     private List<CobrancaComAluno> comAlunos(List<Cobranca> lista) {
+        LocalDate hoje = LocalDate.now(clock);
         Map<UUID, Aluno> cache = lista.stream().map(Cobranca::alunoId).distinct()
                 .map(alunos::buscarPorId).flatMap(Optional::stream)
                 .collect(Collectors.toMap(Aluno::id, Function.identity()));
-        return lista.stream().map(c -> new CobrancaComAluno(c, cache.get(c.alunoId()))).toList();
+        return lista.stream()
+                .map(c -> new CobrancaComAluno(c, cache.get(c.alunoId()), c.valorDevidoEm(hoje, indice)))
+                .toList();
     }
 
-    public record CobrancaComAluno(Cobranca cobranca, Aluno aluno) {
+    /** {@code valorDevido}: com desconto até o vencimento; depois, integral mais encargos. */
+    public record CobrancaComAluno(Cobranca cobranca, Aluno aluno, Dinheiro valorDevido) {
     }
 
     public record Inadimplente(Cobranca cobranca, Aluno aluno, Encargos encargos, Dinheiro valorAtualizado) {

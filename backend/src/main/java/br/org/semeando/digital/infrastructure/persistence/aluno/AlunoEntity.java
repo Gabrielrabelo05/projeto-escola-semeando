@@ -1,12 +1,14 @@
 package br.org.semeando.digital.infrastructure.persistence.aluno;
 
 import br.org.semeando.digital.domain.aluno.Aluno;
+import br.org.semeando.digital.domain.aluno.AtividadeExtracurricular;
 import br.org.semeando.digital.domain.aluno.InformacoesMedicas;
 import br.org.semeando.digital.domain.aluno.StatusAluno;
 import br.org.semeando.digital.domain.shared.Cpf;
 import br.org.semeando.digital.infrastructure.persistence.shared.AutorizadoEmbeddable;
 import br.org.semeando.digital.infrastructure.persistence.shared.DadoSensivelConverter;
 import jakarta.persistence.CollectionTable;
+import jakarta.persistence.Column;
 import jakarta.persistence.Convert;
 import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
@@ -19,7 +21,10 @@ import jakarta.persistence.OrderColumn;
 import jakarta.persistence.Table;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.EnumSet;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @Entity
@@ -47,6 +52,12 @@ class AlunoEntity {
     @OrderColumn(name = "ordem")
     private List<AutorizadoEmbeddable> autorizados = new ArrayList<>();
 
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "aluno_atividades", joinColumns = @JoinColumn(name = "aluno_id"))
+    @Column(name = "atividade")
+    @Enumerated(EnumType.STRING)
+    private Set<AtividadeExtracurricular> atividades = new HashSet<>();
+
     protected AlunoEntity() {
     }
 
@@ -64,12 +75,14 @@ class AlunoEntity {
         e.fotoUrl = a.fotoUrl();
         e.status = a.status();
         e.autorizados = new ArrayList<>(a.autorizados().stream().map(AutorizadoEmbeddable::de).toList());
+        e.atividades = new HashSet<>(a.atividades());
         return e;
     }
 
     Aluno paraDominio() {
         return new Aluno(id, nome, dataNascimento, responsavelId, Cpf.de(cpfResponsavel),
                 new InformacoesMedicas(alergias, tipoSanguineo, necessidadesEspeciais), hospitalEmergencia,
-                autorizados.stream().map(AutorizadoEmbeddable::paraDominio).toList(), fotoUrl, status);
+                autorizados.stream().map(AutorizadoEmbeddable::paraDominio).toList(), fotoUrl, status,
+                atividades.isEmpty() ? Set.of() : EnumSet.copyOf(atividades));
     }
 }

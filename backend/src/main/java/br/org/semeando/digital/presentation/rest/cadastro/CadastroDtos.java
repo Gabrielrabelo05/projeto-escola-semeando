@@ -4,6 +4,7 @@ import br.org.semeando.digital.application.cadastro.AlunosUseCase.AtualizarAluno
 import br.org.semeando.digital.application.cadastro.FuncionariosUseCase.DadosFuncionario;
 import br.org.semeando.digital.application.cadastro.PrestadoresUseCase.DadosPrestador;
 import br.org.semeando.digital.application.cadastro.ProfessoresUseCase.DadosProfessor;
+import br.org.semeando.digital.domain.aluno.AtividadeExtracurricular;
 import br.org.semeando.digital.domain.aluno.InformacoesMedicas;
 import br.org.semeando.digital.domain.auditoria.RegistroAuditoria;
 import br.org.semeando.digital.domain.pessoa.Contato;
@@ -21,6 +22,7 @@ import jakarta.validation.constraints.NotNull;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 public final class CadastroDtos {
@@ -38,6 +40,9 @@ public final class CadastroDtos {
                     autorizados == null ? List.of() : autorizados.stream().map(AutorizadoDto::paraDominio).toList(),
                     fotoUrl);
         }
+    }
+
+    public record AtividadesRequest(@NotNull Set<AtividadeExtracurricular> atividades) {
     }
 
     public record ProfessorRequest(@NotBlank String nome, @NotBlank String cpf, @Email String email, String telefone,

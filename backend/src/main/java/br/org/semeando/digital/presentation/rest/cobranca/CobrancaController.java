@@ -2,7 +2,6 @@ package br.org.semeando.digital.presentation.rest.cobranca;
 
 import br.org.semeando.digital.application.cobranca.ConfirmarPagamentoUseCase;
 import br.org.semeando.digital.application.cobranca.ConsultarFinanceiroUseCase;
-import br.org.semeando.digital.application.cobranca.ConsultarFinanceiroUseCase.CobrancaComAluno;
 import br.org.semeando.digital.application.cobranca.GerarCobrancasMensaisUseCase;
 import br.org.semeando.digital.application.shared.Ator;
 import br.org.semeando.digital.domain.shared.Dinheiro;
@@ -70,7 +69,7 @@ public class CobrancaController {
     public CobrancaResponse pagamentoManual(@PathVariable UUID id, @Valid @RequestBody PagamentoManualRequest r,
             Ator ator) {
         var cobranca = confirmarPagamento.registrarManual(id, r.pagoEm(), Dinheiro.de(r.valorPago()), r.forma(), ator);
-        return CobrancaResponse.de(new CobrancaComAluno(cobranca, null), clock);
+        return CobrancaResponse.de(financeiro.detalhar(cobranca), clock);
     }
 
     @GetMapping("/inadimplencia")

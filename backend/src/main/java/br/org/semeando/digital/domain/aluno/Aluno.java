@@ -4,7 +4,10 @@ import br.org.semeando.digital.domain.shared.Cpf;
 import br.org.semeando.digital.domain.shared.DomainException;
 import br.org.semeando.digital.domain.shared.Validacoes;
 import java.time.LocalDate;
+import java.util.Collections;
+import java.util.EnumSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 /** RF-07 / RF-31: ficha completa do aluno, vinculada ao CPF do responsável. */
@@ -20,21 +23,23 @@ public class Aluno {
     private List<PessoaAutorizada> autorizados;
     private String fotoUrl;
     private StatusAluno status;
+    private final Set<AtividadeExtracurricular> atividades = EnumSet.noneOf(AtividadeExtracurricular.class);
 
     public Aluno(UUID id, String nome, LocalDate dataNascimento, UUID responsavelId, Cpf cpfResponsavel,
             InformacoesMedicas informacoesMedicas, String hospitalEmergencia, List<PessoaAutorizada> autorizados,
-            String fotoUrl, StatusAluno status) {
+            String fotoUrl, StatusAluno status, Set<AtividadeExtracurricular> atividades) {
         this.id = Validacoes.obrigatorio(id, "id");
         this.responsavelId = Validacoes.obrigatorio(responsavelId, "responsável");
         this.cpfResponsavel = Validacoes.obrigatorio(cpfResponsavel, "CPF do responsável");
         this.status = Validacoes.obrigatorio(status, "status");
         atualizarFicha(nome, dataNascimento, informacoesMedicas, hospitalEmergencia, autorizados, fotoUrl);
+        definirAtividades(atividades);
     }
 
     public static Aluno preMatricular(String nome, LocalDate dataNascimento, UUID responsavelId, Cpf cpfResponsavel,
             InformacoesMedicas informacoesMedicas, String hospitalEmergencia, List<PessoaAutorizada> autorizados) {
         return new Aluno(UUID.randomUUID(), nome, dataNascimento, responsavelId, cpfResponsavel, informacoesMedicas,
-                hospitalEmergencia, autorizados, null, StatusAluno.PRE_MATRICULA);
+                hospitalEmergencia, autorizados, null, StatusAluno.PRE_MATRICULA, Set.of());
     }
 
     public final void atualizarFicha(String nome, LocalDate dataNascimento, InformacoesMedicas informacoesMedicas,
@@ -53,6 +58,14 @@ public class Aluno {
     /** RN-06: hospital de emergência e autorizados a buscar são obrigatórios para o vínculo contratual. */
     public boolean possuiDadosDeSeguranca() {
         return hospitalEmergencia != null && !hospitalEmergencia.isBlank() && !autorizados.isEmpty();
+    }
+
+    /** Inscrição em Jiu Jitsu / Ballet, cobrados mensalmente junto com a cobrança principal. */
+    public void definirAtividades(Set<AtividadeExtracurricular> novas) {
+        atividades.clear();
+        if (novas != null) {
+            atividades.addAll(novas);
+        }
     }
 
     public void ativar() {
@@ -114,5 +127,9 @@ public class Aluno {
 
     public StatusAluno status() {
         return status;
+    }
+
+    public Set<AtividadeExtracurricular> atividades() {
+        return Collections.unmodifiableSet(atividades);
     }
 }
