@@ -6,6 +6,7 @@ import br.org.semeando.digital.domain.contrato.StatusDocumentoVinculo;
 import br.org.semeando.digital.domain.shared.Dinheiro;
 import br.org.semeando.digital.presentation.rest.contrato.ContratoDtos.ContratoResponse;
 import br.org.semeando.digital.presentation.rest.contrato.ContratoDtos.GerarContratoRequest;
+import br.org.semeando.digital.presentation.rest.shared.Origem;
 import br.org.semeando.digital.presentation.rest.shared.Perfis;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -73,12 +74,6 @@ public class ContratoController {
     @PostMapping("/{id}/assinar")
     @PreAuthorize(Perfis.SECRETARIA_OU_RESPONSAVEL)
     public ContratoResponse assinar(@PathVariable UUID id, HttpServletRequest http, Ator ator) {
-        return ContratoResponse.de(contratos.assinar(id, enderecoIp(http), ator));
-    }
-
-    private static String enderecoIp(HttpServletRequest http) {
-        String encaminhado = http.getHeader("X-Forwarded-For");
-        return encaminhado == null || encaminhado.isBlank() ? http.getRemoteAddr()
-                : encaminhado.split(",")[0].trim();
+        return ContratoResponse.de(contratos.assinar(id, Origem.ip(http), ator));
     }
 }

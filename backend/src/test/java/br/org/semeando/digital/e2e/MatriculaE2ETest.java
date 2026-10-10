@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.jayway.jsonpath.JsonPath;
+import jakarta.servlet.http.Cookie;
 import java.time.YearMonth;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -152,11 +153,11 @@ class MatriculaE2ETest {
     }
 
     private String login(String email) throws Exception {
-        String resposta = mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
+        return mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"email\":\"%s\",\"senha\":\"%s\"}".formatted(email, SENHA)))
                 .andExpect(status().isOk())
-                .andReturn().getResponse().getContentAsString();
-        return JsonPath.read(resposta, "$.token");
+                .andExpect(jsonPath("$.token").doesNotExist())
+                .andReturn().getResponse().getCookie("semeando_sessao").getValue();
     }
 
     private String turmaDaSerie(String serie) throws Exception {
@@ -197,8 +198,9 @@ class MatriculaE2ETest {
                 .andExpect(jsonPath("$.codigo").value("CONVITE_INVALIDO"));
     }
 
+    /** Como o navegador: cookie HttpOnly de sessão + header anti-CSRF. */
     private static MockHttpServletRequestBuilder autenticado(MockHttpServletRequestBuilder req, String token) {
-        return req.header("Authorization", "Bearer " + token);
+        return req.cookie(new Cookie("semeando_sessao", token)).header("X-Requested-With", "XMLHttpRequest");
     }
 
     private static String preMatricula(String aluno, String cpf, String turmaId, boolean comAutorizados) {

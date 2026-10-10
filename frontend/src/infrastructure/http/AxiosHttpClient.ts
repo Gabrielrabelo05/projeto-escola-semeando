@@ -5,7 +5,6 @@ import axios, {
 } from "axios";
 import type { ArquivoBaixado } from "@/domain/models/comum";
 import { ErroApi } from "@/domain/models/erro";
-import type { TokenStorage } from "../auth/TokenStorage";
 import type { HttpClient, OpcoesRequisicao, Parametros } from "./HttpClient";
 
 interface CorpoErro {
@@ -17,16 +16,19 @@ interface CorpoErro {
 export class AxiosHttpClient implements HttpClient {
   private readonly http: AxiosInstance;
 
+  /**
+   * A sessão viaja no cookie HttpOnly (o JavaScript não lê o token). O header X-Requested-With é exigido pela
+   * API em toda alteração feita com o cookie: outro site não consegue enviá-lo (proteção contra CSRF).
+   */
   constructor(
     baseURL: string,
-    private readonly tokens: TokenStorage,
     private readonly aoExpirarSessao: () => void = () => {},
   ) {
-    this.http = axios.create({ baseURL, timeout: 20_000 });
-    this.http.interceptors.request.use((config) => {
-      const sessao = this.tokens.ler();
-      if (sessao) config.headers.set("Authorization", `Bearer ${sessao.token}`);
-      return config;
+    this.http = axios.create({
+      baseURL,
+      timeout: 20_000,
+      withCredentials: true,
+      headers: { "X-Requested-With": "XMLHttpRequest" },
     });
     this.http.interceptors.response.use(
       (resposta) => resposta,

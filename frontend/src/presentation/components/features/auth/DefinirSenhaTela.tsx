@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -32,7 +32,12 @@ import {
 export function DefinirSenhaTela() {
   const { auth } = useGateways();
   const router = useRouter();
-  const token = useSearchParams().get("token") ?? "";
+  const parametros = useSearchParams();
+  const [token] = useState(() => parametros.get("token") ?? "");
+  // O token sai da barra de endereço (e do histórico) assim que é lido.
+  useEffect(() => {
+    window.history.replaceState(null, "", "/definir-senha");
+  }, []);
   const convite = useCarregar(() => auth.consultarConvite(token), [token]);
   const [erro, setErro] = useState<string | null>(null);
   const {

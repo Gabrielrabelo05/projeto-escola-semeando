@@ -35,8 +35,11 @@ public class TratadorGlobalErros {
     /** Violações de regra de negócio e invariantes do domínio. */
     @ExceptionHandler(DomainException.class)
     ResponseEntity<ErroResponse> dominio(DomainException e) {
-        HttpStatus status = "CREDENCIAIS_INVALIDAS".equals(e.codigo()) ? HttpStatus.UNAUTHORIZED
-                : HttpStatus.UNPROCESSABLE_CONTENT;
+        HttpStatus status = switch (e.codigo()) {
+            case "CREDENCIAIS_INVALIDAS" -> HttpStatus.UNAUTHORIZED;
+            case "MUITAS_TENTATIVAS" -> HttpStatus.TOO_MANY_REQUESTS;
+            default -> HttpStatus.UNPROCESSABLE_CONTENT;
+        };
         return resposta(status, e.codigo(), e.getMessage());
     }
 

@@ -2,6 +2,7 @@ package br.org.semeando.digital.infrastructure.config;
 
 import br.org.semeando.digital.application.auditoria.Auditor;
 import br.org.semeando.digital.application.auth.EmissorConvite;
+import br.org.semeando.digital.application.auth.LimitadorTentativasLogin;
 import br.org.semeando.digital.application.cobranca.EmissorCobranca;
 import br.org.semeando.digital.application.matricula.MatriculaContexto;
 import br.org.semeando.digital.application.pedagogico.ProfessorLogado;
@@ -82,6 +83,11 @@ public class AplicacaoConfig {
         String url = props.web() == null || props.web().url() == null || props.web().url().isBlank()
                 ? props.seguranca().corsOrigens().getFirst() : props.web().url();
         return new EmissorConvite(usuarios, convites, notificacoes, url, clock);
+    }
+
+    @Bean
+    LimitadorTentativasLogin limitadorTentativasLogin(Clock clock) {
+        return new LimitadorTentativasLogin(clock);
     }
 
     @Bean

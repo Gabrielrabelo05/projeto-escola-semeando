@@ -3,6 +3,7 @@ package br.org.semeando.digital.infrastructure.config;
 import java.math.BigDecimal;
 import java.util.List;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.context.properties.bind.DefaultValue;
 
 @ConfigurationProperties("semeando")
 public record SemeandoProperties(Instituicao instituicao, Valores valores, Seguranca seguranca, Cora cora,
@@ -20,7 +21,9 @@ public record SemeandoProperties(Instituicao instituicao, Valores valores, Segur
     public record Parcela(BigDecimal integral, BigDecimal comDesconto) {
     }
 
-    public record Seguranca(String jwtSegredo, long jwtValidadeMinutos, List<String> corsOrigens) {
+    /** {@code cookieSeguro}: cookie de sessão só por HTTPS (desligar apenas em HTTP fora de localhost). */
+    public record Seguranca(String jwtSegredo, long jwtValidadeMinutos, List<String> corsOrigens,
+            @DefaultValue("true") boolean cookieSeguro) {
     }
 
     public record Cora(String modo, String url, String token, String webhookSegredo) {

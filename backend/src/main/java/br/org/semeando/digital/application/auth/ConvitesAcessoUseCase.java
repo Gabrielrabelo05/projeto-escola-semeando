@@ -72,6 +72,8 @@ public class ConvitesAcessoUseCase {
         convite.usar(agora);
         Usuario usuario = usuarios.buscarPorId(convite.usuarioId()).orElseThrow();
         usuario.alterarSenha(codificador.codificar(senha));
+        // Quem tinha a senha antiga (ex.: conta comprometida) perde as sessões abertas.
+        usuario.encerrarSessoes(agora);
         convites.salvar(convite);
         Usuario salvo = usuarios.salvar(usuario);
         auditor.registrar(new Ator(usuario.id(), usuario.nome(), usuario.perfil(), usuario.cpf()),

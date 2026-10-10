@@ -71,7 +71,9 @@ Faça os passos **nesta ordem**: a URL de cada serviço é usada pelo seguinte.
    - `NEXT_PUBLIC_API_URL` = `https://semeando-api.onrender.com/api` (URL do passo 2.4 + `/api`).
 4. Clique em **Deploy** e anote a URL, por exemplo `https://projeto-escola-semeando.vercel.app`.
 
-> `NEXT_PUBLIC_API_URL` entra no build. Se ela mudar, é preciso fazer um *Redeploy* na Vercel.
+> `NEXT_PUBLIC_API_URL` (ou `BACKEND_URL`, que tem prioridade) é o **destino do proxy `/api`** do Next: o
+> navegador só fala com o domínio da Vercel, e o cookie de sessão HttpOnly fica de primeira parte. Ela entra
+> no build; se mudar, é preciso fazer um *Redeploy* na Vercel.
 
 ## 4. Liberar o front na API (CORS)
 

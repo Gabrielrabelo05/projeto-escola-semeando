@@ -10,8 +10,8 @@ export interface Usuario {
   acessoPendente: boolean;
 }
 
+/** O token fica só no cookie HttpOnly; o front recebe apenas os dados do usuário. */
 export interface Sessao {
-  token: string;
   usuario: Usuario;
 }
 

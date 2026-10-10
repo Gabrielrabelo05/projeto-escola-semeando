@@ -48,7 +48,7 @@ services:
     build:
       context: ./frontend
       args:
-        NEXT_PUBLIC_API_URL: http://localhost:8080/api
+        BACKEND_URL: http://backend:8080/api
     container_name: semeando-web
     depends_on:
       - backend

@@ -16,6 +16,14 @@ export class HttpAuthGateway implements AuthGateway {
     return this.http.post("/auth/login", credenciais);
   }
 
+  sessaoAtual(): Promise<Usuario> {
+    return this.http.get("/auth/sessao");
+  }
+
+  sair(): Promise<void> {
+    return this.http.post("/auth/sair");
+  }
+
   listarUsuarios(): Promise<Usuario[]> {
     return this.http.get("/usuarios");
   }

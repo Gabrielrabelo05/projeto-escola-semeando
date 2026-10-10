@@ -3,7 +3,6 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Gateways } from "@/domain/gateways";
 import { ErroApi } from "@/domain/models/erro";
-import { MemoryTokenStorage } from "@/infrastructure/auth/TokenStorage";
 import { AuthProvider } from "@/presentation/providers/AuthProvider";
 import { GatewayProvider } from "@/presentation/providers/GatewayProvider";
 import { LoginTela } from "./LoginTela";
@@ -16,6 +15,8 @@ vi.mock("next/navigation", () => ({
 function renderizar(entrar: Gateways["auth"]["entrar"]) {
   const auth = {
     entrar,
+    sessaoAtual: vi.fn().mockRejectedValue(new ErroApi(401, "HTTP_401", "")),
+    sair: vi.fn().mockResolvedValue(undefined),
     listarUsuarios: vi.fn(),
     criarUsuario: vi.fn(),
     novoLinkAcesso: vi.fn(),
@@ -26,7 +27,7 @@ function renderizar(entrar: Gateways["auth"]["entrar"]) {
   const gateways = { auth } as unknown as Gateways;
   return render(
     <GatewayProvider gateways={gateways}>
-      <AuthProvider gateway={auth} tokens={new MemoryTokenStorage()}>
+      <AuthProvider gateway={auth}>
         <LoginTela />
       </AuthProvider>
     </GatewayProvider>,
@@ -48,7 +49,6 @@ describe("LoginTela", () => {
 
   it("autentica pelo gateway e redireciona conforme o perfil", async () => {
     const entrar = vi.fn().mockResolvedValue({
-      token: "jwt",
       usuario: {
         id: "1",
         nome: "Maria",

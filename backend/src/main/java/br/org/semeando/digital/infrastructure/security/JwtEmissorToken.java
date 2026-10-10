@@ -19,6 +19,7 @@ class JwtEmissorToken implements EmissorToken {
     static final String CLAIM_PERFIL = "perfil";
     static final String CLAIM_NOME = "nome";
     static final String CLAIM_CPF = "cpf";
+    static final String EMISSOR = "semeando-digital";
 
     private final JwtEncoder encoder;
     private final Duration validade;
@@ -34,7 +35,7 @@ class JwtEmissorToken implements EmissorToken {
     public String emitir(Usuario usuario) {
         Instant agora = clock.instant();
         JwtClaimsSet.Builder claims = JwtClaimsSet.builder()
-                .issuer("semeando-digital")
+                .issuer(EMISSOR)
                 .subject(usuario.id().toString())
                 .issuedAt(agora)
                 .expiresAt(agora.plus(validade))

@@ -8,6 +8,7 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import java.time.Instant;
 import java.util.UUID;
 
 @Entity
@@ -23,6 +24,7 @@ class UsuarioEntity {
     private Perfil perfil;
     private String cpf;
     private boolean ativo;
+    private Instant sessoesValidasDesde;
 
     protected UsuarioEntity() {
     }
@@ -36,10 +38,12 @@ class UsuarioEntity {
         e.perfil = u.perfil();
         e.cpf = u.cpf() == null ? null : u.cpf().numero();
         e.ativo = u.ativo();
+        e.sessoesValidasDesde = u.sessoesValidasDesde();
         return e;
     }
 
     Usuario paraDominio() {
-        return new Usuario(id, nome, email, senhaHash, perfil, cpf == null ? null : Cpf.de(cpf), ativo);
+        return new Usuario(id, nome, email, senhaHash, perfil, cpf == null ? null : Cpf.de(cpf), ativo,
+                sessoesValidasDesde);
     }
 }

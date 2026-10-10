@@ -6,7 +6,10 @@ import br.org.semeando.digital.application.auth.EmissorConvite.Convite;
 import br.org.semeando.digital.application.shared.Ator;
 import br.org.semeando.digital.domain.usuario.Perfil;
 import br.org.semeando.digital.domain.usuario.Usuario;
+import br.org.semeando.digital.infrastructure.security.CookieSessao;
+import br.org.semeando.digital.presentation.rest.shared.Origem;
 import br.org.semeando.digital.presentation.rest.shared.Perfis;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -14,7 +17,9 @@ import jakarta.validation.constraints.NotNull;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -31,16 +36,32 @@ public class AuthController {
 
     private final AutenticacaoUseCase autenticacao;
     private final ConvitesAcessoUseCase convites;
+    private final CookieSessao cookie;
 
-    public AuthController(AutenticacaoUseCase autenticacao, ConvitesAcessoUseCase convites) {
+    public AuthController(AutenticacaoUseCase autenticacao, ConvitesAcessoUseCase convites, CookieSessao cookie) {
         this.autenticacao = autenticacao;
         this.convites = convites;
+        this.cookie = cookie;
     }
 
+    /** O token vai apenas no cookie HttpOnly; o corpo traz só os dados do usuário. */
     @PostMapping("/auth/login")
-    public SessaoResponse login(@Valid @RequestBody LoginRequest request) {
-        var sessao = autenticacao.entrar(request.email(), request.senha());
-        return new SessaoResponse(sessao.token(), UsuarioResponse.de(sessao.usuario()));
+    public ResponseEntity<SessaoResponse> login(@Valid @RequestBody LoginRequest request, HttpServletRequest http) {
+        var sessao = autenticacao.entrar(request.email(), request.senha(), Origem.ip(http));
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, cookie.criar(sessao.token()).toString())
+                .body(new SessaoResponse(UsuarioResponse.de(sessao.usuario())));
+    }
+
+    /** Usuário logado (o front consulta ao abrir, já que não tem acesso ao token). */
+    @GetMapping("/auth/sessao")
+    public UsuarioResponse sessao(Ator ator) {
+        return UsuarioResponse.de(autenticacao.usuarioAtual(ator.usuarioId()));
+    }
+
+    @PostMapping("/auth/sair")
+    public ResponseEntity<Void> sair() {
+        return ResponseEntity.noContent().header(HttpHeaders.SET_COOKIE, cookie.apagar().toString()).build();
     }
 
     @GetMapping("/auth/eu")
@@ -95,7 +116,7 @@ public class AuthController {
     public record DefinirSenhaRequest(@NotBlank String senha) {
     }
 
-    public record SessaoResponse(String token, UsuarioResponse usuario) {
+    public record SessaoResponse(UsuarioResponse usuario) {
     }
 
     /** {@code acessoPendente}: o usuário ainda não definiu a senha pelo link. */

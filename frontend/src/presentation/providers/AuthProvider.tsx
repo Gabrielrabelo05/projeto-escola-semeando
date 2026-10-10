@@ -12,7 +12,6 @@ import {
 import type { AuthGateway } from "@/domain/gateways";
 import type { Credenciais, Usuario } from "@/domain/models/auth";
 import type { Perfil } from "@/domain/models/comum";
-import type { TokenStorage } from "@/infrastructure/auth/TokenStorage";
 
 interface AuthContexto {
   usuario: Usuario | null;
@@ -26,33 +25,50 @@ const Contexto = createContext<AuthContexto | null>(null);
 
 interface Props {
   gateway: AuthGateway;
-  tokens: TokenStorage;
   children: ReactNode;
 }
 
-export function AuthProvider({ gateway, tokens, children }: Props) {
+/** Versões anteriores guardavam o token no localStorage; ele é removido para não ficar exposto. */
+const CHAVE_LEGADA = "semeando.sessao";
+
+/**
+ * O token fica num cookie HttpOnly, invisível ao JavaScript. Ao abrir, o front pergunta à API quem é o usuário
+ * da sessão; sair pede à API para apagar o cookie.
+ */
+export function AuthProvider({ gateway, children }: Props) {
   const [usuario, setUsuario] = useState<Usuario | null>(null);
   const [carregando, setCarregando] = useState(true);
 
   useEffect(() => {
-    setUsuario(tokens.ler()?.usuario ?? null);
-    setCarregando(false);
-  }, [tokens]);
+    try {
+      window.localStorage.removeItem(CHAVE_LEGADA);
+    } catch {
+      // armazenamento indisponível (modo privado): nada a limpar
+    }
+    let ativo = true;
+    gateway
+      .sessaoAtual()
+      .then((atual) => ativo && setUsuario(atual))
+      .catch(() => ativo && setUsuario(null))
+      .finally(() => ativo && setCarregando(false));
+    return () => {
+      ativo = false;
+    };
+  }, [gateway]);
 
   const entrar = useCallback(
     async (credenciais: Credenciais) => {
       const sessao = await gateway.entrar(credenciais);
-      tokens.salvar(sessao);
       setUsuario(sessao.usuario);
       return sessao.usuario;
     },
-    [gateway, tokens],
+    [gateway],
   );
 
   const sair = useCallback(() => {
-    tokens.limpar();
     setUsuario(null);
-  }, [tokens]);
+    void gateway.sair().catch(() => {});
+  }, [gateway]);
 
   const possuiPerfil = useCallback(
     (...perfis: Perfil[]) =>

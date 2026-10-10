@@ -143,6 +143,11 @@ métodos de gateway obtidos por `useGateways()`, e só a infraestrutura conhece 
 | RN-09 | `IdentidadeInstitucional` validada na inicialização e impressa nos documentos |
 | RN-10 | `TipoObrigacao.prazo()` + alertas de 30/15 dias sem repetição |
 
+Segurança da sessão: o JWT fica só num cookie HttpOnly + Secure + SameSite=Strict (o JavaScript da página não
+o lê), o front repassa `/api` ao backend no próprio domínio, alterações exigem header anti-CSRF, inativação e
+troca de senha derrubam as sessões na hora, o login bloqueia força bruta (5 erros → 15 min) e o front envia
+CSP, HSTS e demais cabeçalhos de proteção.
+
 Requisitos não funcionais atendidos: RBAC por perfil (RF-35), log de auditoria somente inserção, com
 trigger no PostgreSQL que bloqueia UPDATE/DELETE (RNF-06), criptografia AES-256-GCM das informações de
 saúde em repouso (RNF-01), registros nunca excluídos (RF-37), interface responsiva (RNF-04),

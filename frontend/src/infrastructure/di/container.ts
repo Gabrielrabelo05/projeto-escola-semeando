@@ -29,5 +29,5 @@ export function criarGateways(http: HttpClient): Gateways {
   };
 }
 
-export const API_URL =
-  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/api";
+/** Mesmo domínio do front: o Next repassa "/api" ao backend (ver next.config.ts). */
+export const API_URL = "/api";
